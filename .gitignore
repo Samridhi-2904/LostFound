@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+*.egg-info/
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Local uploads and media
+uploads/
+media/
+backend/uploads/
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+
+# Frontend (for future phases)
+node_modules/
+dist/
+build/
+.npm
