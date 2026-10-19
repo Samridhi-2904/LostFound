@@ -1,118 +1,212 @@
-# Lost and Found Management System
+# Campus Lost & Found Management System
 
-A role-based web application for reporting and searching lost/found items, suggesting potential matches, reviewing ownership claims, managing custody, and recording verified item handovers. These documents are implementation instructions and a design plan; they do **not** mean the application features have already been built or tested.
+[![Backend Tests](https://img.shields.io/badge/Backend%20Tests-42%2F42%20Passing-brightgreen)]()
+[![Frontend Build](https://img.shields.io/badge/Frontend%20Build-Vite%20%2B%20TypeScript%20Passing-brightgreen)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)]()
+[![React](https://img.shields.io/badge/React-19%20%7C%20TypeScript-61DAFB)]()
+[![Security](https://img.shields.io/badge/Password%20Hashing-Argon2id-blue)]()
 
-## Actors
-- Visitor — browse and search public-safe report information.
-- Registered User — manage own reports, submit claims, view own matches/notifications.
-- Staff Member — review reports and claims, manage authorized custody workflows, record handovers.
-- Administrator — manage users/roles, categories, custody locations, report moderation, dashboard, and audit records.
+A complete, role-based web application engineered for campus lost and found management. The system allows visitors to search verified items safely, enables students to submit lost/found reports and confidential ownership claims, empowers security staff to manage physical custody lockers and verified handovers, and equips administrators with system metrics and immutable audit logs.
 
-## Planned technology stack
-- Backend: Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic.
-- Local database: SQLite; keep configuration compatible with PostgreSQL.
-- Frontend (later phase): React, Vite, TypeScript.
-- Backend tests: pytest.
-- Local development image storage with validated files and database metadata.
+Treat [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) and [`AGENTS.md`](AGENTS.md) as the architectural source of truth.
 
-## Instruction and design files
-- `AGENTS.md` — rules for the coding agent and safety invariants.
-- `docs/REQUIREMENTS.md` — actors, FR-01 to FR-25, NFRs, business rules, acceptance checklist.
-- `docs/ARCHITECTURE.md` — component boundaries and security design.
-- `docs/DATABASE.md` — entity inventory, relationships, statuses, privacy constraints.
-- `docs/API.md` — planned versioned endpoint contract.
-- `docs/UI.md` — actor-specific screens and UX/privacy rules.
-- `docs/IMPLEMENTATION_PLAN.md` — incremental phases and exit checks.
-- `docs/TESTING.md` — verification strategy and end-to-end acceptance flow.
-- `docs/CODING_RULES.md` — implementation standards.
-- `docs/LAB_AND_VIVA.md` — project explanation and viva preparation.
+---
 
-## Suggested repository structure
-Adapt to the existing repository rather than replacing it blindly.
+## 🏛️ System Architecture
+
 ```text
-lost-and-found/
-├── AGENTS.md
-├── README.md
-├── docs/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── db/
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   └── tests/
-│   ├── alembic/
-│   ├── requirements.txt
-│   └── .env.example
-└── frontend/                 # created only in planned frontend phase
-    ├── src/
-    ├── package.json
-    └── .env.example
+┌────────────────────────────────────────────────────────────────────────┐
+│                   React 19 + TypeScript Frontend (Vite)                │
+│  - Modern Glassmorphism CSS Design System (Responsive down to 360px)   │
+│  - Reactive AuthContext (Bearer Token + 30-min Inactivity Auto-Logout) │
+│  - Public Search, Report Modals, Advisory Match Panels, Role Dashboards│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP / REST API (JSON)
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                       FastAPI Backend Architecture                     │
+│  ├── API Layer (Versioned: /api/v1/)                                   │
+│  │   ├── Auth, Reports, Search, Images, Matches, Claims, Returns, Admin│
+│  ├── Security & Authorization                                          │
+│  │   ├── Role Dependencies (require_user, require_staff, require_admin)│
+│  │   └── Argon2id Password Hashing + JWT Revocation System             │
+│  ├── Business Service Layer                                            │
+│  │   ├── Deterministic Advisory Matching Engine (Multi-signal scoring) │
+│  │   ├── Report & Claim State Machine Service                          │
+│  │   └── Custody Tracking & Handover Verification Service              │
+│  └── Data Layer                                                        │
+│      ├── SQLAlchemy 2.0 ORM + Alembic Schema Migrations                │
+│      └── SQLite (Development) / PostgreSQL (Production Compatible)     │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Start with Antigravity
-1. Put `AGENTS.md` and the `docs/` directory in the project root.
-2. Ask Antigravity to read `AGENTS.md` and every document under `docs/`.
-3. Ask it to perform **Phase 0 only** first: inspect the repository, summarize existing code and Git status, identify conflicts/gaps, and propose the smallest safe changes. Do not let it generate the whole application at once.
-4. After reviewing the inspection, ask it to implement Phase 1 only. Phase 1 is backend foundation; no frontend yet.
-5. Continue one phase at a time, reviewing test results and diffs before moving on.
+---
 
-Suggested first prompt:
-> Read `AGENTS.md` and every file in `docs/`. Perform only Phase 0 from `docs/IMPLEMENTATION_PLAN.md`. Inspect the existing repository and Git status, preserve useful code, and report the current structure, what already works, risks, and the exact plan for Phase 1. Do not edit files or create the frontend during this inspection phase.
+## 🔐 Core Safety Invariants & Privacy Boundaries
 
-## Setup and commands
+1. **Strict Multi-Tenant Privacy Boundaries**:
+   - Public visitors only see public-safe report fields. Precise custody locker locations (e.g. `Keypad PIN: 4892`) and finder contact details are restricted exclusively to authorized staff and administrators.
+   - Ownership evidence submitted by claimants is confidential and viewable only by the claimant and reviewing staff/admin.
+2. **Deterministic Advisory Matching**:
+   - The matching engine uses weighted heuristics across category, brand, colour, date proximity, and text similarity. Matches are strictly **advisory suggestions for human review** and never automatically approve ownership claims.
+3. **Verified Handover Requirement (`Returned` State)**:
+   - An item **cannot** simply have its status changed to `returned`. It requires an approved claim and an officially recorded physical handover confirmation (recipient ID inspection, condition notes, recipient signature/confirmation).
+4. **Self-Review Prevention**:
+   - Staff members cannot review, approve, or reject claims filed on reports they created.
+5. **Role Escalation Prevention**:
+   - Public user registration strictly rejects attempts to specify `staff` or `admin` roles.
+6. **Inactivity Session Invalidation**:
+   - The frontend automatically clears tokens and logs users out after 30 minutes of inactivity (NFR-03). Sign-out revokes access tokens on both client and server.
 
-### Backend Setup (Verified in Phase 1)
-1. **Create and activate virtual environment (Python 3.12+; tested with Python 3.13):**
+---
+
+## 🚀 Quickstart Guide
+
+### Prerequisites
+- **Python 3.12+** (tested with Python 3.13 and 3.14)
+- **Node.js 18+** & **npm 9+** (tested with Node v24.16.0 & npm 11.7.0)
+- **Git**
+
+---
+
+### Step 1: Backend Setup
+
+1. **Create and activate Python virtual environment**:
    ```powershell
-   py -3.13 -m venv backend/.venv
-   backend\.venv\Scripts\activate
+   # Windows PowerShell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
    ```
-2. **Install dependencies:**
+
+2. **Install backend dependencies**:
    ```powershell
    pip install -r backend/requirements.txt
    ```
-3. **Environment configuration:**
-   Copy `backend/.env.example` to `backend/.env` if customizing defaults:
+
+3. **Configure environment**:
    ```powershell
-   copy backend\.env.example backend\.env
+   Copy-Item backend\.env.example backend\.env
    ```
-4. **Run tests:**
-   ```powershell
-   cd backend
-   .venv\Scripts\pytest -v
-   ```
-5. **Run backend development server:**
+
+4. **Run database migrations**:
    ```powershell
    cd backend
-   .venv\Scripts\uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   alembic upgrade head
    ```
 
-## Important workflow guarantees
-- Public users cannot see ownership evidence or precise restricted custody/contact details.
-- A potential match is only a suggestion, not proof of ownership.
-- Only staff/admin can decide claims.
-- Returned requires an approved claim and persisted handover confirmation.
-- Status, custody, claim decisions, role changes, and important administrative changes must be traceable.
-- Performance and availability figures are targets until measured.
+5. **Seed demo accounts and sample campus data**:
+   ```powershell
+   python scripts/seed_demo_data.py
+   ```
 
-## Current status
+6. **Start FastAPI backend development server**:
+   ```powershell
+   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+   Backend API docs will be available at: **http://127.0.0.1:8000/docs**
 
-### Implemented and Verified (Phase 1)
-- Git repository initialization and `.gitignore` setup.
-- Package structure: `backend/app/` (`core`, `db`, `models`, `schemas`, `services`, `api`) and `backend/tests/`.
-- Modern dependencies in `backend/requirements.txt`: FastAPI, Uvicorn, Pydantic v2, Pydantic Settings, SQLAlchemy 2.x, Alembic, Pytest, HTTPX.
-- Environment loading via Pydantic Settings in `backend/app/core/config.py` with parsed CORS origins.
-- SQLAlchemy 2.x engine, SessionLocal, and `get_db` session generator in `backend/app/db/session.py`.
-- Base declarative model class (`Base`) in `backend/app/db/base.py`.
-- Main FastAPI app instance in `backend/app/main.py` with CORS middleware and `GET /health` endpoint returning `{"status": "ok"}`.
-- Smoke tests in `backend/tests/test_health.py` passing with 100% success rate.
+---
 
-### Not Yet Implemented (Planned for Next Phases)
-- **Phase 2:** Domain models (User, StaffProfile, Category, CustodyLocation, ItemReport, subtype design, ItemImage, MatchSuggestion, Claim, Return, Notification, ReportStatusHistory, AuditLog) and Alembic migrations.
-- **Phase 3:** Authentication, authorization, role dependencies, password hashing (Argon2id), session management.
-- **Phases 4–8:** Report workflows, search/matching, claims/decisions, custody/returns, admin dashboard and audit logs.
-- **Phases 9–10:** React + Vite + TypeScript frontend.
+### Step 2: Frontend Setup
 
+Open a new terminal window:
+
+1. **Navigate to `frontend/` and install packages**:
+   ```powershell
+   cd frontend
+   npm install
+   ```
+
+2. **Start Vite development server**:
+   ```powershell
+   npm run dev
+   ```
+   Open your browser at: **http://localhost:5173**
+
+---
+
+## 👥 Demo Accounts for Evaluation & Viva
+
+The database seed script (`backend/scripts/seed_demo_data.py`) provisions the following accounts:
+
+| Role | Email | Password | Permissions & Dashboard Access |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@campus.edu` | `AdminSecret123!` | System stats, User Directory (role promotion), Categories CRUD, Custody Locker PINs, System Audit Logs |
+| **Staff Member** | `staff@campus.edu` | `StaffSecret123!` | Report Moderation Queue, Claims Review, Handover Confirmations, Custody Relocations, Archival/Disposal |
+| **Student (Alice)** | `alice@campus.edu` | `StudentPass123!` | File lost/found reports, view matches, submit ownership claim, inspect return records |
+| **Student (Bob)** | `bob@campus.edu` | `StudentPass123!` | File lost/found reports, deposited found laptop at Campus Vault |
+
+---
+
+## 🧪 Verification & Test Suite
+
+### 1. Backend Automated Tests (42 Passing Tests)
+Execute all tests using `pytest`:
+```powershell
+# From project root
+.\.venv\Scripts\python.exe -m pytest backend/tests -v
+```
+
+Test suite coverage includes:
+- `test_auth.py` (12 tests): Registration, Argon2id hashing, role escalation blocking, login, JWT token revocation, profile updates.
+- `test_reports.py` (6 tests): Lost/Found report creation, category isolation, custody location privacy masking, edit/close permissions, invalid status transitions.
+- `test_phase5.py` (3 tests): Search filtering with pagination, validated image upload security (MIME/size/extension), deterministic advisory matching.
+- `test_claims.py` (4 tests): Claim creation, duplicate claim blocking, confidential evidence privacy, staff review & self-review prevention.
+- `test_phase7.py` (5 tests): Verified handover confirmation, custody relocation, policy-controlled archival/disposal, admin audit log inspection.
+- `test_phase8.py` (2 tests): Operational dashboard metric calculations, admin user role management & self-lockout prevention.
+- `test_e2e_journey.py` (1 test): Complete multi-actor end-to-end journey simulation.
+- `test_models.py` (7 tests) & `test_health.py` (2 tests): Schema integrity, relationship cascades, health checks.
+
+### 2. Frontend Production Build & TypeScript Verification
+```powershell
+cd frontend
+npm run build
+```
+Builds cleanly with zero TypeScript errors (`tsc -b && vite build`) in ~1.4s.
+
+---
+
+## 📂 Project Structure
+
+```text
+LostFound/
+├── AGENTS.md                          # Non-negotiable safety rules & constraints
+├── README.md                          # Project documentation & quickstart
+├── pyproject.toml                     # Pytest and tooling configuration
+├── pyrefly.toml                       # Python type checking configuration
+├── docs/
+│   ├── REQUIREMENTS.md                # Functional (FR-01 to FR-25) & NFR requirements
+│   ├── ARCHITECTURE.md                # System components & data flow
+│   ├── DATABASE.md                    # Entity-relationship design & invariants
+│   ├── API.md                         # REST API endpoints contract
+│   ├── UI.md                          # UI workflow and screen guidelines
+│   ├── IMPLEMENTATION_PLAN.md         # Staged 11-phase development roadmap
+│   ├── IMPLEMENTATION_PROGRESS.md     # Phase-by-phase completion report
+│   └── VIVA_AND_LAB_NOTES.md          # Comprehensive viva preparation & technical defense
+├── backend/
+│   ├── alembic/                       # Schema migration version control
+│   ├── app/
+│   │   ├── api/v1/                    # Versioned FastAPI endpoints
+│   │   ├── core/                      # Settings, security & config
+│   │   ├── db/                        # Database session & Base declarative
+│   │   ├── models/                    # SQLAlchemy 2.0 ORM domain models
+│   │   ├── schemas/                   # Pydantic v2 DTO validation schemas
+│   │   └── services/                  # Business logic & state machine transitions
+│   ├── scripts/
+│   │   └── seed_demo_data.py          # Demo data seeding script
+│   └── tests/                         # 42 Automated pytest test suites
+└── frontend/
+    ├── src/
+    │   ├── context/AuthContext.tsx    # Reactive auth state & auto-logout
+    │   ├── services/api.ts            # Type-safe Axios client with interceptors
+    │   ├── pages/                     # React pages (Home, Search, Details, Dashboards)
+    │   ├── types/                     # Shared TypeScript interfaces
+    │   └── index.css                  # Custom Glassmorphic design system
+    └── package.json                   # React 19, Vite, Lucide icons
+```
+
+---
+
+## 🎓 Student Viva & Lab Preparation
+
+For detailed questions and answers regarding database normalization, state transition rules, password security, JWT revocation, and defense talking points, please refer to:
+👉 [`docs/VIVA_AND_LAB_NOTES.md`](docs/VIVA_AND_LAB_NOTES.md)

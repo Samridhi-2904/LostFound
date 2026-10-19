@@ -3,6 +3,7 @@ from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1 import api_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -32,6 +33,9 @@ if settings.CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# Include versioned API routers
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/health", tags=["System"])
