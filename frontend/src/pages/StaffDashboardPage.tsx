@@ -1,34 +1,38 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { staffApi, adminApi, categoryApi, custodyApi } from '../services/api';
-import type { DashboardStats, ItemReport, Claim, User, Category, CustodyLocation, UserRole } from '../types';
+import { staffApi, custodyApi } from '../services/api';
+import type { ItemReport, Claim, CustodyLocation } from '../types';
 import { Link } from 'react-router-dom';
 import { 
+  ShieldCheck, 
+  CheckCircle2, 
   AlertCircle, 
-  CheckCircle2,
-  Users,
-  Layers,
-  MapPin,
+  HeartHandshake, 
+  ArrowRightLeft, 
+  Archive, 
+  ExternalLink,
   Clock,
-  ArrowRightLeft,
-  Archive,
-  Plus
+  Layers,
+  ArrowRight,
+  ShieldAlert,
+  FileCheck,
+  Check
 } from 'lucide-react';
 
 export const StaffDashboardPage: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
 
-  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingReports, setPendingReports] = useState<ItemReport[]>([]);
   const [claimsQueue, setClaimsQueue] = useState<Claim[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [custodyLocations, setCustodyLocations] = useState<CustodyLocation[]>([]);
-  const [userList, setUserList] = useState<User[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Tab navigation
-  const [activeTab, setActiveTab] = useState<'reports' | 'claims' | 'transfer' | 'users' | 'categories' | 'locations' | 'audit'>('reports');
+  const [activeTab, setActiveTab] = useState<'reports' | 'claims' | 'transfer' | 'lifecycle'>('reports');
+
+  // Notifications
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Claim decision modal state
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
@@ -57,72 +61,32 @@ export const StaffDashboardPage: React.FC = () => {
   const [lifecycleConfirm, setLifecycleConfirm] = useState(false);
   const [submittingLifecycle, setSubmittingLifecycle] = useState(false);
 
-  // New Category State
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatDesc, setNewCatDesc] = useState('');
-  const [creatingCat, setCreatingCat] = useState(false);
-
-  // New Location State
-  const [newLocFacility, setNewLocFacility] = useState('');
-  const [newLocBuilding, setNewLocBuilding] = useState('');
-  const [newLocRoom, setNewLocRoom] = useState('');
-  const [newLocRestricted, setNewLocRestricted] = useState('');
-  const [creatingLoc, setCreatingLoc] = useState(false);
-
-  // Role Promotion State
-  const [targetUser, setTargetUser] = useState<User | null>(null);
-  const [selectedRole, setSelectedRole] = useState<UserRole>('staff');
-  const [staffDept, setStaffDept] = useState('');
-  const [staffDesk, setStaffDesk] = useState('');
-  const [updatingRole, setUpdatingRole] = useState(false);
-
-  // Success / error banner
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
+  const loadStaffData = useCallback(async () => {
     setLoading(true);
     setActionError(null);
     try {
-      const [pending, claims, cats, locs] = await Promise.all([
-        staffApi.getPendingReports(),
-        staffApi.getStaffClaims(),
-        categoryApi.getCategories(),
-        custodyApi.getPublicLocations(),
+      const [pending, claims, locs] = await Promise.all([
+        staffApi.getPendingReports().catch(() => []),
+        staffApi.getStaffClaims().catch(() => []),
+        custodyApi.getAdminLocations().catch(() => []),
       ]);
       setPendingReports(pending);
       setClaimsQueue(claims);
-      setCategories(cats);
-      setCustodyLocations(locs);
-
-      if (isAdmin) {
-        const [statsData, adminCats, adminLocs, users, logs] = await Promise.all([
-          adminApi.getDashboardStats().catch(() => null),
-          categoryApi.getAdminCategories().catch(() => []),
-          custodyApi.getAdminLocations().catch(() => []),
-          adminApi.getUsers().catch(() => []),
-          adminApi.getAuditLogs({ limit: 40 }).catch(() => []),
-        ]);
-        if (statsData) setStats(statsData);
-        if (adminCats.length > 0) setCategories(adminCats);
-        if (adminLocs.length > 0) setCustodyLocations(adminLocs);
-        setUserList(users);
-        setAuditLogs(logs);
-      }
+      if (locs) setCustodyLocations(locs);
     } catch (err: any) {
       setActionError(err.message || 'Failed to load staff moderation queues.');
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadStaffData();
+  }, [loadStaffData]);
 
   const handleVerifyReport = async (reportId: number) => {
     try {
-      await staffApi.verifyReport(reportId, 'Verified by staff moderation.');
+      await staffApi.verifyReport(reportId, 'Verified by staff moderation desk.');
       setActionSuccess(`Report #${reportId} verified and published.`);
       setPendingReports((prev) => prev.filter((r) => r.report_id !== reportId));
     } catch (err: any) {
@@ -155,7 +119,7 @@ export const StaffDashboardPage: React.FC = () => {
       setActionSuccess(`Claim #${selectedClaim.claim_id} decision [${decisionType}] recorded.`);
       setSelectedClaim(null);
       setDecisionNotes('');
-      loadData();
+      loadStaffData();
     } catch (err: any) {
       setActionError(err.message || 'Failed to submit decision.');
     } finally {
@@ -176,11 +140,11 @@ export const StaffDashboardPage: React.FC = () => {
         condition_of_item: itemCondition,
         notes: handoverNotes || undefined,
       });
-      setActionSuccess(`Handover confirmed! Item marked as Returned.`);
+      setActionSuccess(`Handover confirmed! Item marked as Returned in the permanent record.`);
       setHandoverClaim(null);
       setHandoverConfirmation('');
       setHandoverNotes('');
-      loadData();
+      loadStaffData();
     } catch (err: any) {
       setActionError(err.message || 'Failed to record handover.');
     } finally {
@@ -198,14 +162,15 @@ export const StaffDashboardPage: React.FC = () => {
     try {
       await staffApi.transferCustody(parseInt(transferReportId, 10), {
         new_custody_location_id: Number(newLocationId),
-        storage_reference: newStorageRef || undefined,
-        reason: transferReason || undefined,
+        storage_reference: newStorageRef.trim() || undefined,
+        reason: transferReason.trim() || 'Internal custody relocation',
       });
-      setActionSuccess(`Custody successfully transferred for Report #${transferReportId}.`);
+      setActionSuccess(`Custody relocated for Report #${transferReportId}.`);
       setTransferReportId('');
+      setNewLocationId('');
       setNewStorageRef('');
       setTransferReason('');
-      loadData();
+      loadStaffData();
     } catch (err: any) {
       setActionError(err.message || 'Custody transfer failed.');
     } finally {
@@ -215,7 +180,7 @@ export const StaffDashboardPage: React.FC = () => {
 
   const handleLifecycleAction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lifecycleReportId || !lifecycleReason || !lifecycleConfirm) return;
+    if (!lifecycleReportId || !lifecycleActionType || !lifecycleConfirm) return;
 
     setSubmittingLifecycle(true);
     setActionError(null);
@@ -223,891 +188,528 @@ export const StaffDashboardPage: React.FC = () => {
     try {
       const repId = parseInt(lifecycleReportId, 10);
       if (lifecycleActionType === 'archive') {
-        await staffApi.archiveReport(repId, lifecycleReason);
-        setActionSuccess(`Report #${repId} successfully archived.`);
-      } else if (lifecycleActionType === 'dispose') {
-        await staffApi.disposeReport(repId, lifecycleReason);
-        setActionSuccess(`Report #${repId} successfully marked as disposed.`);
+        await staffApi.archiveReport(repId, lifecycleReason.trim() || 'Archived by staff policy');
+        setActionSuccess(`Report #${repId} has been archived.`);
+      } else {
+        await staffApi.disposeReport(repId, lifecycleReason.trim() || 'Disposed according to campus retention protocol');
+        setActionSuccess(`Report #${repId} recorded as Disposed.`);
       }
-      setLifecycleActionType(null);
       setLifecycleReportId('');
       setLifecycleReason('');
+      setLifecycleActionType(null);
       setLifecycleConfirm(false);
-      loadData();
+      loadStaffData();
     } catch (err: any) {
-      setActionError(err.message || 'Action failed.');
+      setActionError(err.message || `Failed to ${lifecycleActionType} report.`);
     } finally {
       setSubmittingLifecycle(false);
     }
   };
 
-  const handleCreateCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-    setCreatingCat(true);
-    try {
-      await categoryApi.createCategory({ name: newCatName, description: newCatDesc || undefined });
-      setActionSuccess(`Category "${newCatName}" created.`);
-      setNewCatName('');
-      setNewCatDesc('');
-      loadData();
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to create category.');
-    } finally {
-      setCreatingCat(false);
-    }
-  };
-
-  const handleCreateLocation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLocFacility.trim() || !newLocBuilding.trim()) return;
-    setCreatingLoc(true);
-    try {
-      await custodyApi.createLocation({
-        facility_name: newLocFacility,
-        building: newLocBuilding,
-        room_number: newLocRoom || undefined,
-        restricted_details: newLocRestricted || undefined,
-      });
-      setActionSuccess(`Custody location "${newLocFacility}" created.`);
-      setNewLocFacility('');
-      setNewLocBuilding('');
-      setNewLocRoom('');
-      setNewLocRestricted('');
-      loadData();
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to create custody location.');
-    } finally {
-      setCreatingLoc(false);
-    }
-  };
-
-  const handleUpdateRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!targetUser) return;
-    setUpdatingRole(true);
-    try {
-      await adminApi.updateUserRole(targetUser.user_id, selectedRole, staffDept || undefined, staffDesk || undefined);
-      setActionSuccess(`User #${targetUser.user_id} (${targetUser.email}) role updated to ${selectedRole}.`);
-      setTargetUser(null);
-      loadData();
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to update user role.');
-    } finally {
-      setUpdatingRole(false);
-    }
-  };
-
-  const handleToggleUserStatus = async (target: User) => {
-    if (target.user_id === user?.user_id) {
-      alert('You cannot deactivate your own administrative account.');
-      return;
-    }
-    const newStatus = !target.is_active;
-    const actionText = newStatus ? 'activate' : 'deactivate';
-    if (!window.confirm(`Are you sure you want to ${actionText} user account ${target.email}?`)) {
-      return;
-    }
-    try {
-      await adminApi.updateUserStatus(target.user_id, newStatus);
-      setActionSuccess(`User account ${target.email} is now ${newStatus ? 'active' : 'deactivated'}.`);
-      loadData();
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to change user status.');
-    }
-  };
+  const pendingVerificationCount = pendingReports.length;
+  const approvedForHandoverClaims = claimsQueue.filter((c) => c.claim_status === 'approved');
+  const pendingEvaluationClaims = claimsQueue.filter((c) => c.claim_status === 'pending' || c.claim_status === 'more_information_requested');
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-          <span className="badge-role admin">{user?.role}</span>
-          <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-            {isAdmin ? 'System Administration & Moderation' : 'Staff Moderation Portal'}
+      {/* Staff Operational Console Header */}
+      <div className="dashboard-header dashboard-header-staff">
+        <div>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.25rem 0.75rem',
+            borderRadius: 'var(--radius-full)',
+            background: 'rgba(255, 255, 255, 0.2)',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            marginBottom: '0.75rem',
+          }}>
+            <ShieldCheck size={14} /> Campus Security &amp; Custody Desk
+          </div>
+          <h1 style={{ fontSize: '1.9rem', fontWeight: 800, color: '#ffffff', marginBottom: '0.35rem' }}>
+            Staff Operations Workstation
           </h1>
+          <p style={{ color: '#ccfbf1', fontSize: '0.95rem' }}>
+            Intake report verification, claim ownership evaluations, in-person physical handovers, and secure locker management.
+          </p>
         </div>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Review pending report submissions, evaluate confidential ownership claims, manage custody handovers, and administer taxonomy.
-        </p>
+
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <Link to="/admin/dashboard" className="btn btn-secondary btn-sm" style={{ fontWeight: 600, color: '#312e81' }}>
+              Switch to Admin Console <ArrowRight size={15} />
+            </Link>
+          </div>
+        )}
       </div>
 
+      {/* Global Alerts */}
       {actionSuccess && (
-        <div className="alert alert-success" style={{ marginBottom: '1.5rem' }}>
+        <div className="alert alert-success">
           <CheckCircle2 size={18} /> {actionSuccess}
         </div>
       )}
-
       {actionError && (
-        <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>
+        <div className="alert alert-error">
           <AlertCircle size={18} /> {actionError}
         </div>
       )}
 
-      {/* Admin Dashboard Stats Summary */}
-      {isAdmin && stats && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '1rem',
-          marginBottom: '2.5rem',
-        }}>
-          <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #3b82f6' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>OPEN REPORTS</span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.2rem' }}>
-              {stats.lifecycle_counts.open}
-            </div>
+      {/* Operational Queue KPI Counters */}
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-icon-wrap" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+            <Clock size={24} />
           </div>
-
-          <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #8b5cf6' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>MATCHED</span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.2rem' }}>
-              {stats.lifecycle_counts.matched}
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CLAIMED</span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.2rem' }}>
-              {stats.lifecycle_counts.claimed}
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #10b981' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>RETURNED</span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.2rem' }}>
-              {stats.lifecycle_counts.returned}
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #64748b' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ARCHIVED</span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.2rem' }}>
-              {stats.lifecycle_counts.archived}
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #ef4444' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DISPOSED</span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.2rem' }}>
-              {stats.lifecycle_counts.disposed}
-            </div>
+          <div className="metric-info">
+            <span className="metric-value">{pendingVerificationCount}</span>
+            <span className="metric-label">Reports Awaiting Verification</span>
           </div>
         </div>
-      )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
-        <button
-          className={`btn btn-sm ${activeTab === 'reports' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setActiveTab('reports')}
-        >
-          Pending Moderation ({pendingReports.length})
-        </button>
+        <div className="metric-card">
+          <div className="metric-icon-wrap" style={{ background: '#fffbeb', color: '#b45309' }}>
+            <FileCheck size={24} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-value">{pendingEvaluationClaims.length}</span>
+            <span className="metric-label">Claims Under Staff Review</span>
+          </div>
+        </div>
 
-        <button
-          className={`btn btn-sm ${activeTab === 'claims' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setActiveTab('claims')}
-        >
-          Claims Review Queue ({claimsQueue.length})
-        </button>
+        <div className="metric-card">
+          <div className="metric-icon-wrap" style={{ background: '#ecfdf5', color: '#047857' }}>
+            <HeartHandshake size={24} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-value">{approvedForHandoverClaims.length}</span>
+            <span className="metric-label">Approved for Handover</span>
+          </div>
+        </div>
 
-        <button
-          className={`btn btn-sm ${activeTab === 'transfer' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setActiveTab('transfer')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-        >
-          <ArrowRightLeft size={14} /> Custody Operations
-        </button>
-
-        {isAdmin && (
-          <>
-            <button
-              className={`btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setActiveTab('users')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <Users size={14} /> User Directory ({userList.length})
-            </button>
-
-            <button
-              className={`btn btn-sm ${activeTab === 'categories' ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setActiveTab('categories')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <Layers size={14} /> Categories ({categories.length})
-            </button>
-
-            <button
-              className={`btn btn-sm ${activeTab === 'locations' ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setActiveTab('locations')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <MapPin size={14} /> Custody Locations ({custodyLocations.length})
-            </button>
-
-            <button
-              className={`btn btn-sm ${activeTab === 'audit' ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setActiveTab('audit')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <Clock size={14} /> Audit Trail
-            </button>
-          </>
-        )}
+        <div className="metric-card">
+          <div className="metric-icon-wrap" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
+            <Layers size={24} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-value">{custodyLocations.length}</span>
+            <span className="metric-label">Active Campus Vaults</span>
+          </div>
+        </div>
       </div>
 
-      {/* Tab 1: Pending Reports */}
-      {activeTab === 'reports' && (
-        <div>
-          {loading ? (
-            <p style={{ color: 'var(--text-secondary)' }}>Loading pending reports...</p>
-          ) : pendingReports.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {pendingReports.map((r) => (
-                <div key={r.report_id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                      <span className={`badge ${r.report_type === 'found' ? 'badge-found' : 'badge-lost'}`}>
-                        {r.report_type}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#a5b4fc' }}>
-                        {r.case_reference}
-                      </span>
-                    </div>
-                    <h3 style={{ fontSize: '1.15rem', color: '#fff', marginBottom: '0.25rem' }}>{r.title}</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                      {r.description.slice(0, 140)}...
-                    </p>
-                  </div>
+      {/* Operational Navigation Tabs */}
+      <div className="dashboard-tabs">
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`dashboard-tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
+        >
+          <Clock size={16} /> Verification Queue ({pendingVerificationCount})
+        </button>
 
-                  <div style={{ display: 'flex', gap: '0.65rem' }}>
-                    <Link to={`/reports/${r.report_id}`} className="btn btn-outline btn-sm">
-                      Inspect
-                    </Link>
-                    <button onClick={() => handleVerifyReport(r.report_id)} className="btn btn-primary btn-sm">
-                      Approve &amp; Publish
-                    </button>
-                    <button onClick={() => handleRejectReport(r.report_id)} className="btn btn-danger btn-sm">
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-              <CheckCircle2 size={36} color="#10b981" style={{ margin: '0 auto 1rem' }} />
-              <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.5rem' }}>Moderation Queue Empty</h3>
-              <p style={{ color: 'var(--text-secondary)' }}>All report submissions have been reviewed.</p>
-            </div>
-          )}
+        <button
+          onClick={() => setActiveTab('claims')}
+          className={`dashboard-tab-btn ${activeTab === 'claims' ? 'active' : ''}`}
+        >
+          <FileCheck size={16} /> Claims Evaluation &amp; Handover ({claimsQueue.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('transfer')}
+          className={`dashboard-tab-btn ${activeTab === 'transfer' ? 'active' : ''}`}
+        >
+          <ArrowRightLeft size={16} /> Custody Storage Transfer
+        </button>
+
+        <button
+          onClick={() => setActiveTab('lifecycle')}
+          className={`dashboard-tab-btn ${activeTab === 'lifecycle' ? 'active' : ''}`}
+        >
+          <Archive size={16} /> Archival &amp; Disposal Protocol
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+          Loading operational queues...
         </div>
-      )}
-
-      {/* Tab 2: Claims Review Queue */}
-      {activeTab === 'claims' && (
-        <div>
-          {loading ? (
-            <p style={{ color: 'var(--text-secondary)' }}>Loading claims queue...</p>
-          ) : claimsQueue.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {claimsQueue.map((claim) => (
-                <div key={claim.claim_id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div>
-                      <span className={`badge badge-status ${claim.claim_status}`} style={{ fontSize: '0.75rem', marginBottom: '0.4rem' }}>
-                        {claim.claim_status.replace(/_/g, ' ')}
-                      </span>
-                      <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>
-                        Claim #{claim.claim_id} on Report #{claim.report_id}
-                      </h4>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        Claimant User #{claim.claimant_user_id} • Filed on {new Date(claim.submitted_at).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <Link to={`/reports/${claim.report_id}`} className="btn btn-outline btn-sm">
-                        View Item
-                      </Link>
-
-                      {claim.claim_status === 'approved' && (
-                        <button
-                          onClick={() => setHandoverClaim(claim)}
-                          className="btn btn-primary btn-sm"
-                          style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
-                        >
-                          Record Handover
-                        </button>
-                      )}
-
-                      {['pending', 'more_information_requested'].includes(claim.claim_status) && (
-                        <button
-                          onClick={() => setSelectedClaim(claim)}
-                          className="btn btn-primary btn-sm"
-                        >
-                          Review Claim
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Ownership Evidence Box */}
-                  <div style={{
-                    padding: '0.85rem',
-                    background: 'var(--bg-surface-elevated)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: '0.88rem',
-                  }}>
-                    <strong style={{ color: '#a5b4fc', display: 'block', marginBottom: '0.3rem' }}>
-                      Confidential Ownership Evidence:
-                    </strong>
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      {claim.ownership_evidence}
-                    </span>
-                  </div>
-
-                  {claim.review_notes && (
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      <strong>Latest Review Notes:</strong> {claim.review_notes}
-                    </div>
-                  )}
+      ) : (
+        <>
+          {/* TAB 1: VERIFICATION QUEUE */}
+          {activeTab === 'reports' && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Intake Moderation Queue
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Newly filed student reports require staff approval before publishing to public search.
+                  </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-              <CheckCircle2 size={36} color="#10b981" style={{ margin: '0 auto 1rem' }} />
-              <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.5rem' }}>No Claims Awaiting Review</h3>
-              <p style={{ color: 'var(--text-secondary)' }}>All submitted claims have been assessed.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 3: Custody Operations (Transfer, Archive, Dispose) */}
-      {activeTab === 'transfer' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem' }}>
-          {/* Custody Facility Transfer */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <ArrowRightLeft size={18} color="var(--primary)" /> Physical Custody Relocation
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
-              Move a found item to another secured campus storage facility with an updated internal locker code.
-            </p>
-
-            <form onSubmit={handleTransferCustody}>
-              <div className="form-group">
-                <label className="form-label">Report ID *</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="e.g. 1"
-                  value={transferReportId}
-                  onChange={(e) => setTransferReportId(e.target.value)}
-                  required
-                />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">New Custody Facility *</label>
-                <select
-                  className="form-select"
-                  value={newLocationId}
-                  onChange={(e) => setNewLocationId(Number(e.target.value))}
-                  required
-                >
-                  <option value="">Select storage location...</option>
-                  {custodyLocations.map((loc) => (
-                    <option key={loc.location_id} value={loc.location_id}>
-                      {loc.facility_name} ({loc.building})
-                    </option>
+              {pendingReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <CheckCircle2 size={36} color="#059669" style={{ margin: '0 auto 0.75rem' }} />
+                  <p>All submitted reports have been reviewed! No items pending moderation.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {pendingReports.map((r) => (
+                    <div
+                      key={r.report_id}
+                      style={{
+                        padding: '1.25rem',
+                        background: 'var(--bg-surface-elevated)',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '1rem',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '260px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                          <span className={`badge ${r.report_type === 'found' ? 'badge-found' : 'badge-lost'}`}>
+                            {r.report_type}
+                          </span>
+                          <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                            {r.case_reference}
+                          </span>
+                        </div>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                          {r.title}
+                        </h4>
+                        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+                          {r.description}
+                        </p>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                          <span><strong>Location:</strong> {r.location_approximate}</span>
+                          <span><strong>Date:</strong> {new Date(r.date_incident).toLocaleDateString()}</span>
+                          {r.contact_info_restricted && (
+                            <span style={{ color: '#b45309' }}>
+                              <strong>Restricted Contact:</strong> {r.contact_info_restricted}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.65rem' }}>
+                        <Link to={`/reports/${r.report_id}`} className="btn btn-outline btn-sm">
+                          Inspect <ExternalLink size={13} />
+                        </Link>
+                        <button
+                          onClick={() => handleRejectReport(r.report_id)}
+                          className="btn btn-danger btn-sm"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => handleVerifyReport(r.report_id)}
+                          className="btn btn-success btn-sm"
+                        >
+                          <Check size={14} /> Verify &amp; Publish
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </select>
-              </div>
+                </div>
+              )}
+            </div>
+          )}
 
-              <div className="form-group">
-                <label className="form-label">New Storage / Locker Reference</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Locker 4B, Shelf #2"
-                  value={newStorageRef}
-                  onChange={(e) => setNewStorageRef(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Reason for Transfer</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Transferred to Central Campus Vault for high-value safekeeping"
-                  value={transferReason}
-                  onChange={(e) => setTransferReason(e.target.value)}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingTransfer}
-                className="btn btn-primary btn-sm"
-                style={{ width: '100%', marginTop: '0.5rem' }}
-              >
-                {submittingTransfer ? 'Transferring...' : 'Execute Custody Transfer'}
-              </button>
-            </form>
-          </div>
-
-          {/* Policy-Controlled Final Lifecycle Actions */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Archive size={18} color="#ef4444" /> Policy Archival &amp; Disposal
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
-              Items uncollected past policy retention windows may be formally archived or disposed with documented justification.
-            </p>
-
-            <form onSubmit={handleLifecycleAction}>
-              <div className="form-group">
-                <label className="form-label">Action Type *</label>
-                <select
-                  className="form-select"
-                  value={lifecycleActionType || ''}
-                  onChange={(e) => setLifecycleActionType(e.target.value as any)}
-                  required
-                >
-                  <option value="">Select lifecycle action...</option>
-                  <option value="archive">Archive Report (Unclaimed past policy)</option>
-                  <option value="dispose">Dispose Item (Damaged/Destroyed/Donated)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Report ID *</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="e.g. 2"
-                  value={lifecycleReportId}
-                  onChange={(e) => setLifecycleReportId(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Mandatory Policy Justification *</label>
-                <textarea
-                  className="form-textarea"
-                  rows={3}
-                  placeholder="Record policy citation, retention expiration, or disposal method..."
-                  value={lifecycleReason}
-                  onChange={(e) => setLifecycleReason(e.target.value)}
-                  required
-                />
-              </div>
-
+          {/* TAB 2: CLAIMS REVIEW & HANDOVER */}
+          {activeTab === 'claims' && (
+            <div className="card">
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fca5a5', fontSize: '0.85rem', cursor: 'pointer' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Ownership Claims &amp; Return Handover Desk
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Decide ownership claims and execute official in-person handovers for approved claims.
+                </p>
+              </div>
+
+              {claimsQueue.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <p>No claims currently in the moderation queue.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {claimsQueue.map((claim) => (
+                    <div
+                      key={claim.claim_id}
+                      style={{
+                        padding: '1.25rem',
+                        background: 'var(--bg-surface-elevated)',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '1rem',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '260px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                          <span className={`badge badge-status ${claim.claim_status}`}>
+                            {claim.claim_status.replace('_', ' ')}
+                          </span>
+                          <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                            Claim #{claim.claim_id} on Report #{claim.report_id}
+                          </span>
+                        </div>
+
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Claimant:</span>{' '}
+                          <strong style={{ color: 'var(--text-primary)' }}>{claim.claimant?.full_name || `User #${claim.claimant_user_id}`}</strong>
+                          {claim.claimant?.email && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}> ({claim.claimant.email})</span>}
+                        </div>
+
+                        <div style={{
+                          padding: '0.75rem',
+                          background: '#ffffff',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-subtle)',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-secondary)',
+                          marginBottom: '0.5rem',
+                        }}>
+                          <strong style={{ color: 'var(--text-primary)' }}>Submitted Ownership Proof:</strong> {claim.ownership_evidence}
+                        </div>
+
+                        {claim.review_notes && (
+                          <div style={{ fontSize: '0.82rem', color: '#b45309' }}>
+                            <strong>Reviewer Notes:</strong> {claim.review_notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.65rem' }}>
+                        <Link to={`/reports/${claim.report_id}`} className="btn btn-outline btn-sm">
+                          Item Details
+                        </Link>
+
+                        {claim.claim_status !== 'approved' && (
+                          <button
+                            onClick={() => {
+                              setSelectedClaim(claim);
+                              setDecisionType('approve');
+                              setDecisionNotes('');
+                            }}
+                            className="btn btn-primary btn-sm"
+                          >
+                            Assess Evidence
+                          </button>
+                        )}
+
+                        {claim.claim_status === 'approved' && (
+                          <button
+                            onClick={() => {
+                              setHandoverClaim(claim);
+                              setHandoverConfirmation('');
+                              setHandoverNotes('');
+                            }}
+                            className="btn btn-success btn-sm"
+                          >
+                            <HeartHandshake size={15} /> Confirm Handover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: CUSTODY TRANSFER */}
+          {activeTab === 'transfer' && (
+            <div className="card" style={{ maxWidth: '640px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRightLeft size={18} color="var(--primary)" /> Relocate Custody Location
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Transfer physical custody of a found item to a central vault, department locker, or security facility.
+              </p>
+
+              <form onSubmit={handleTransferCustody}>
+                <div className="form-group">
+                  <label className="form-label">Report ID *</label>
                   <input
-                    type="checkbox"
-                    checked={lifecycleConfirm}
-                    onChange={(e) => setLifecycleConfirm(e.target.checked)}
+                    type="number"
+                    className="form-input"
+                    placeholder="Enter Found Item Report ID (e.g. 1)"
+                    value={transferReportId}
+                    onChange={(e) => setTransferReportId(e.target.value)}
                     required
                   />
-                  I explicitly confirm this lifecycle action under university policy.
-                </label>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingLifecycle || !lifecycleConfirm}
-                className="btn btn-danger btn-sm"
-                style={{ width: '100%' }}
-              >
-                {submittingLifecycle ? 'Processing...' : 'Apply Lifecycle Action'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 4: User Directory (Admin Only) */}
-      {isAdmin && activeTab === 'users' && (
-        <div className="card">
-          <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={18} color="var(--primary)" /> Registered User Accounts
-          </h3>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.75rem' }}>User ID</th>
-                  <th style={{ padding: '0.75rem' }}>Name</th>
-                  <th style={{ padding: '0.75rem' }}>Email</th>
-                  <th style={{ padding: '0.75rem' }}>Role</th>
-                  <th style={{ padding: '0.75rem' }}>Status</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userList.map((u) => (
-                  <tr key={u.user_id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '0.75rem', fontFamily: 'var(--font-mono)' }}>#{u.user_id}</td>
-                    <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>{u.full_name}</td>
-                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <span className={`badge-role ${u.role}`}>{u.role}</span>
-                    </td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <span className="badge" style={{ background: u.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: u.is_active ? '#34d399' : '#f87171' }}>
-                        {u.is_active ? 'Active' : 'Suspended'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      <button
-                        onClick={() => {
-                          setTargetUser(u);
-                          setSelectedRole(u.role);
-                          setStaffDept(u.staff_profile?.department || '');
-                          setStaffDesk(u.staff_profile?.desk_phone || '');
-                        }}
-                        className="btn btn-outline btn-sm"
-                        style={{ fontSize: '0.78rem', marginRight: '0.5rem' }}
-                      >
-                        Change Role
-                      </button>
-
-                      {u.user_id !== user?.user_id && (
-                        <button
-                          onClick={() => handleToggleUserStatus(u)}
-                          className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-secondary'}`}
-                          style={{ fontSize: '0.78rem' }}
-                        >
-                          {u.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 5: Category Management (Admin Only) */}
-      {isAdmin && activeTab === 'categories' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-          {/* Categories List */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '1rem' }}>Active Item Categories</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {categories.map((c) => (
-                <div key={c.category_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                  <div>
-                    <strong style={{ color: '#fff' }}>{c.name}</strong>
-                    {c.description && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.description}</p>}
-                  </div>
-                  <span className="badge" style={{ background: c.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: c.is_active ? '#34d399' : '#f87171' }}>
-                    {c.is_active ? 'Active' : 'Inactive'}
-                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Create Category Form */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Plus size={18} color="var(--primary)" /> Add New Category
-            </h3>
-            <form onSubmit={handleCreateCategory}>
-              <div className="form-group">
-                <label className="form-label">Category Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Musical Instruments, Eyewear"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Description (Optional)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Guitars, violins, brass instruments"
-                  value={newCatDesc}
-                  onChange={(e) => setNewCatDesc(e.target.value)}
-                />
-              </div>
-              <button type="submit" disabled={creatingCat} className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: '0.5rem' }}>
-                {creatingCat ? 'Adding...' : 'Create Category'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 6: Custody Locations Management (Admin Only) */}
-      {isAdmin && activeTab === 'locations' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-          {/* Locations List */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '1rem' }}>Storage Custody Facilities</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {custodyLocations.map((loc) => (
-                <div key={loc.location_id} style={{ padding: '0.85rem 1rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ color: '#fff' }}>{loc.facility_name}</strong>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{loc.building}</span>
-                  </div>
-                  {loc.restricted_details && (
-                    <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-sm)' }}>
-                      <strong>Restricted Staff Details:</strong> {loc.restricted_details}
-                    </div>
-                  )}
+                <div className="form-group">
+                  <label className="form-label">Destination Facility *</label>
+                  <select
+                    className="form-select"
+                    value={newLocationId}
+                    onChange={(e) => setNewLocationId(Number(e.target.value))}
+                    required
+                  >
+                    <option value="">Select Target Storage Facility...</option>
+                    {custodyLocations.map((loc) => (
+                      <option key={loc.location_id} value={loc.location_id}>
+                        {loc.facility_name} ({loc.building})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Add Custody Location Form */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Plus size={18} color="var(--primary)" /> Add Custody Facility
-            </h3>
-            <form onSubmit={handleCreateLocation}>
-              <div className="form-group">
-                <label className="form-label">Facility Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Student Union Lost & Found Desk"
-                  value={newLocFacility}
-                  onChange={(e) => setNewLocFacility(e.target.value)}
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">New Storage / Locker Reference</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Locker #B-14, Shelf 2"
+                    value={newStorageRef}
+                    onChange={(e) => setNewStorageRef(e.target.value)}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Building Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Memorial Union"
-                  value={newLocBuilding}
-                  onChange={(e) => setNewLocBuilding(e.target.value)}
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Relocation Reason</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Transferred from Campus Info Hub to Main Security Vault"
+                    value={transferReason}
+                    onChange={(e) => setTransferReason(e.target.value)}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Room Number</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Room 104"
-                  value={newLocRoom}
-                  onChange={(e) => setNewLocRoom(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Restricted Access Details (Passcodes/Keypad)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Locker safe combo 84-21-99"
-                  value={newLocRestricted}
-                  onChange={(e) => setNewLocRestricted(e.target.value)}
-                />
-              </div>
-
-              <button type="submit" disabled={creatingLoc} className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: '0.5rem' }}>
-                {creatingLoc ? 'Saving...' : 'Add Storage Facility'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 7: System Audit Trail (Admin Only) */}
-      {isAdmin && activeTab === 'audit' && (
-        <div className="card">
-          <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock size={18} color="var(--primary)" /> System Security &amp; Activity Audit Log
-          </h3>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.65rem' }}>Timestamp</th>
-                  <th style={{ padding: '0.65rem' }}>Action</th>
-                  <th style={{ padding: '0.65rem' }}>Entity</th>
-                  <th style={{ padding: '0.65rem' }}>Actor</th>
-                  <th style={{ padding: '0.65rem' }}>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((log: any) => (
-                  <tr key={log.audit_id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '0.65rem', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
-                      {new Date(log.created_at).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '0.65rem' }}>
-                      <span className="badge badge-status" style={{ fontSize: '0.7rem' }}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.65rem', color: '#fff' }}>
-                      {log.entity_type} {log.entity_id ? `#${log.entity_id}` : ''}
-                    </td>
-                    <td style={{ padding: '0.65rem', color: 'var(--text-secondary)' }}>
-                      {log.actor_user_id ? `User #${log.actor_user_id}` : 'System'}
-                    </td>
-                    <td style={{ padding: '0.65rem', color: 'var(--text-secondary)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {log.details ? JSON.stringify(log.details) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Role Management Modal (Admin) */}
-      {targetUser && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 100,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
-        }}>
-          <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
-              Update User Role
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
-              User: <strong>{targetUser.full_name}</strong> ({targetUser.email})
-            </p>
-
-            <form onSubmit={handleUpdateRole}>
-              <div className="form-group">
-                <label className="form-label">Role *</label>
-                <select
-                  className="form-select"
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as any)}
-                  required
-                >
-                  <option value="user">User (Standard Member)</option>
-                  <option value="staff">Staff (Case Handler)</option>
-                  <option value="admin">Administrator (System Manager)</option>
-                </select>
-              </div>
-
-              {selectedRole === 'staff' && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. Campus Security, Library Services"
-                      value={staffDept}
-                      onChange={(e) => setStaffDept(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Desk Phone</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. +1 (555) 432-1000"
-                      value={staffDesk}
-                      onChange={(e) => setStaffDesk(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setTargetUser(null)}
-                  className="btn btn-outline btn-sm"
-                >
-                  Cancel
-                </button>
                 <button
                   type="submit"
-                  disabled={updatingRole}
+                  disabled={submittingTransfer}
                   className="btn btn-primary btn-sm"
+                  style={{ marginTop: '0.5rem' }}
                 >
-                  {updatingRole ? 'Updating...' : 'Save Role'}
+                  {submittingTransfer ? 'Processing Relocation...' : 'Execute Custody Transfer'}
                 </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 4: ARCHIVE & DISPOSAL PROTOCOL */}
+          {activeTab === 'lifecycle' && (
+            <div className="card" style={{ maxWidth: '640px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldAlert size={18} color="#dc2626" /> Policy Archival &amp; Disposal Protocol
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Execute safeguarded lifecycle actions on unclaimed items in accordance with campus retention regulations.
+              </p>
+
+              <form onSubmit={handleLifecycleAction}>
+                <div className="form-group">
+                  <label className="form-label">Lifecycle Action *</label>
+                  <select
+                    className="form-select"
+                    value={lifecycleActionType || ''}
+                    onChange={(e) => setLifecycleActionType(e.target.value as any)}
+                    required
+                  >
+                    <option value="">Select Lifecycle Action...</option>
+                    <option value="archive">Archive Report (Case closed, removed from active search)</option>
+                    <option value="dispose">Dispose Property (30+ days unclaimed, donation / recycled)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Target Report ID *</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Enter Report ID"
+                    value={lifecycleReportId}
+                    onChange={(e) => setLifecycleReportId(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Mandatory Policy Justification *</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={3}
+                    placeholder="Record detailed retention justification for the audit trail..."
+                    value={lifecycleReason}
+                    onChange={(e) => setLifecycleReason(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="confirmLifecycle"
+                    checked={lifecycleConfirm}
+                    onChange={(e) => setLifecycleConfirm(e.target.checked)}
+                  />
+                  <label htmlFor="confirmLifecycle" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    I confirm that retention policy requirements have been met and this action is non-reversible.
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingLifecycle || !lifecycleConfirm}
+                  className="btn btn-danger btn-sm"
+                >
+                  {submittingLifecycle ? 'Processing...' : 'Apply Lifecycle Action'}
+                </button>
+              </form>
+            </div>
+          )}
+        </>
       )}
 
       {/* Claim Decision Modal */}
       {selectedClaim && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 100,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
-        }}>
-          <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
-              Review Claim #{selectedClaim.claim_id}
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+              Assess Claim #{selectedClaim.claim_id}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
-              Decide whether ownership evidence is sufficient to authorize physical handover.
+              Evaluate evidence provided by claimant to determine eligibility for in-person handover.
             </p>
 
             <form onSubmit={handleSubmitClaimReview}>
               <div className="form-group">
-                <label className="form-label">Review Decision</label>
+                <label className="form-label">Decision *</label>
                 <select
                   className="form-select"
                   value={decisionType}
                   onChange={(e) => setDecisionType(e.target.value as any)}
                 >
-                  <option value="approve">Approve Claim (Awaits physical handover)</option>
-                  <option value="reject">Reject Claim (Evidence insufficient)</option>
-                  <option value="request-info">Request More Information</option>
+                  <option value="approve">Approve Claim (Awaits Physical Handover)</option>
+                  <option value="reject">Reject Claim (Evidence Insufficient / Inconclusive)</option>
+                  <option value="request-info">Request Additional Proof / Specifics</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Review Justification &amp; Notes *</label>
+                <label className="form-label">Staff Review Justification *</label>
                 <textarea
                   className="form-textarea"
                   rows={4}
-                  placeholder="Record explanation for this decision (communicated to claimant and logged for audit)..."
+                  placeholder="Record explanation for the decision (shared with claimant and preserved in audit log)..."
                   value={decisionNotes}
                   onChange={(e) => setDecisionNotes(e.target.value)}
                   required
@@ -1127,7 +729,7 @@ export const StaffDashboardPage: React.FC = () => {
                   disabled={submittingDecision || !decisionNotes.trim()}
                   className="btn btn-primary btn-sm"
                 >
-                  {submittingDecision ? 'Submitting...' : 'Record Decision'}
+                  {submittingDecision ? 'Recording...' : 'Submit Decision'}
                 </button>
               </div>
             </form>
@@ -1137,32 +739,22 @@ export const StaffDashboardPage: React.FC = () => {
 
       {/* Handover Recording Modal */}
       {handoverClaim && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 100,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
-        }}>
-          <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
               Confirm Handover &amp; Return
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
-              Record in-person verification details to mark this item officially Returned.
+              Record verified recipient identity and item condition to officially mark the item as Returned.
             </p>
 
             <form onSubmit={handleSubmitHandover}>
               <div className="form-group">
-                <label className="form-label">Recipient Confirmation Details *</label>
+                <label className="form-label">Recipient Identity Verification *</label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. Student ID #98234 verified in person with driver license"
+                  placeholder="e.g. Verified Student ID #49281 with driver license match"
                   value={handoverConfirmation}
                   onChange={(e) => setHandoverConfirmation(e.target.value)}
                   required
@@ -1185,7 +777,7 @@ export const StaffDashboardPage: React.FC = () => {
                 <textarea
                   className="form-textarea"
                   rows={3}
-                  placeholder="Any extra comments regarding the handover process..."
+                  placeholder="e.g. Returned with charging adapter and protective case"
                   value={handoverNotes}
                   onChange={(e) => setHandoverNotes(e.target.value)}
                 />
@@ -1202,10 +794,9 @@ export const StaffDashboardPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submittingHandover || !handoverConfirmation.trim()}
-                  className="btn btn-primary btn-sm"
-                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+                  className="btn btn-success btn-sm"
                 >
-                  {submittingHandover ? 'Recording...' : 'Confirm Return Handover'}
+                  {submittingHandover ? 'Confirming...' : 'Sign & Complete Handover'}
                 </button>
               </div>
             </form>

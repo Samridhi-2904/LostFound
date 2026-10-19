@@ -61,7 +61,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
 
         {report.is_high_value && (
           <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-            <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+            <span className="badge" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
               High Value
             </span>
           </div>
@@ -75,13 +75,13 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
             {report.case_reference}
           </span>
           {report.category && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: '#a5b4fc' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--primary)' }}>
               <Tag size={12} /> {report.category.name}
             </span>
           )}
         </div>
 
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem', lineHeight: 1.3 }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', lineHeight: 1.3 }}>
           {report.title}
         </h3>
 
@@ -101,7 +101,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
         {/* Card Footer details */}
         <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <MapPin size={13} color="#6366f1" />
+            <MapPin size={13} color="var(--primary)" />
             <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {report.location_approximate}
             </span>

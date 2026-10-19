@@ -112,7 +112,7 @@ export const SearchPage: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>
+        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
           Browse &amp; Search Reports
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>
@@ -166,7 +166,7 @@ export const SearchPage: React.FC = () => {
         border: '1px solid var(--border-subtle)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.05rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.05rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Filter size={18} color="var(--primary)" /> Refine Filter Criteria
           </h3>
           <button 
@@ -314,7 +314,7 @@ export const SearchPage: React.FC = () => {
         </div>
       ) : (
         <div className="card" style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
-          <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem' }}>No Reports Match Your Search</h3>
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Reports Match Your Search</h3>
           <p style={{ color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 1.5rem' }}>
             Try broadening your search keywords, adjusting date ranges, or removing specific color/location filters.
           </p>

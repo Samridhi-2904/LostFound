@@ -14,6 +14,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export const App: React.FC = () => {
@@ -43,6 +44,14 @@ export const App: React.FC = () => {
                 }
               />
               <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/notifications"
                 element={
                   <ProtectedRoute>
@@ -51,12 +60,22 @@ export const App: React.FC = () => {
                 }
               />
 
-              {/* Protected Staff & Admin Routes */}
+              {/* Protected Staff Routes */}
               <Route
                 path="/staff/dashboard"
                 element={
                   <ProtectedRoute requireStaff>
                     <StaffDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected Admin Routes */}
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminDashboardPage />
                   </ProtectedRoute>
                 }
               />

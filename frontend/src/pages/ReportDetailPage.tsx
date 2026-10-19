@@ -98,7 +98,7 @@ export const ReportDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, isAuthenticated, user?.user_id, isStaff]);
+  }, [id, isAuthenticated, user, isStaff]);
 
   useEffect(() => {
     fetchReportData();
@@ -262,7 +262,7 @@ export const ReportDetailPage: React.FC = () => {
                 </span>
               )}
             </div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', lineHeight: 1.25, margin: 0 }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25, margin: 0 }}>
               {report.title}
             </h1>
           </div>
@@ -271,7 +271,7 @@ export const ReportDetailPage: React.FC = () => {
             <span style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
               Case Reference:
             </span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#a5b4fc' }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--primary)' }}>
               {report.case_reference}
             </div>
           </div>
@@ -376,28 +376,28 @@ export const ReportDetailPage: React.FC = () => {
             }}>
               <div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Category</div>
-                <div style={{ fontSize: '0.95rem', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Tag size={14} color="#a5b4fc" /> {report.category?.name || 'Uncategorized'}
+                <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Tag size={14} color="var(--primary)" /> {report.category?.name || 'Uncategorized'}
                 </div>
               </div>
 
               <div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Date Reported</div>
-                <div style={{ fontSize: '0.95rem', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Calendar size={14} color="#38bdf8" /> {new Date(report.date_incident).toLocaleDateString()}
+                <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Calendar size={14} color="#0284c7" /> {new Date(report.date_incident).toLocaleDateString()}
                 </div>
               </div>
 
               <div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Approx. Location</div>
-                <div style={{ fontSize: '0.95rem', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <MapPin size={14} color="#6366f1" /> {report.location_approximate}
+                <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <MapPin size={14} color="var(--primary)" /> {report.location_approximate}
                 </div>
               </div>
 
               <div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Colour / Brand</div>
-                <div style={{ fontSize: '0.95rem', color: '#fff', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                   {report.primary_colour || 'N/A'} {report.brand ? `• ${report.brand}` : ''}
                 </div>
               </div>
@@ -405,7 +405,7 @@ export const ReportDetailPage: React.FC = () => {
 
             {/* Full Description */}
             <div style={{ marginBottom: '2.5rem' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: '0.75rem' }}>Detailed Description</h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Detailed Description</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
                 {report.description}
               </p>
@@ -428,11 +428,11 @@ export const ReportDetailPage: React.FC = () => {
                 </p>
 
                 {(isStaff || isOwner) && report.storage_reference ? (
-                  <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)', border: '1px dashed rgba(6, 182, 212, 0.4)' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', border: '1px dashed #cbd5e1' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <Lock size={12} /> Restricted Storage Reference:
                     </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.95rem', color: '#fff' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                       {report.storage_reference}
                     </span>
                   </div>
@@ -456,9 +456,9 @@ export const ReportDetailPage: React.FC = () => {
                 alignItems: 'center',
                 gap: '0.75rem',
               }}>
-                <Lock size={16} color="#a5b4fc" />
+                <Lock size={16} color="var(--primary)" />
                 <div>
-                  <div style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 600 }}>Contact Details (Privileged View)</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600 }}>Contact Details (Privileged View)</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{report.contact_info_restricted}</div>
                 </div>
               </div>
@@ -541,7 +541,7 @@ export const ReportDetailPage: React.FC = () => {
                               {match.status}
                             </span>
                           </div>
-                          <div style={{ marginTop: '0.4rem', fontSize: '1rem', color: '#fff', fontWeight: 600 }}>
+                          <div style={{ marginTop: '0.4rem', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                             Matched with Report #{otherReportId}
                           </div>
                         </div>
@@ -598,7 +598,7 @@ export const ReportDetailPage: React.FC = () => {
         {/* Tab 3: Case History Timeline */}
         {activeTab === 'history' && (
           <div>
-            <h3 style={{ fontSize: '1.1rem', color: '#fff', marginBottom: '1rem' }}>Lifecycle &amp; Custody Audit Trail</h3>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '1rem' }}>Lifecycle &amp; Custody Audit Trail</h3>
             {history.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderLeft: '2px solid var(--border-subtle)', paddingLeft: '1.25rem', marginLeft: '0.5rem' }}>
                 {history.map((item: any, idx: number) => (
@@ -613,7 +613,7 @@ export const ReportDetailPage: React.FC = () => {
                       background: 'var(--primary)',
                       border: '2px solid var(--bg-surface)'
                     }} />
-                    <div style={{ fontSize: '0.9rem', color: '#fff', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                       Status transitioned to <span className="badge badge-status" style={{ fontSize: '0.72rem' }}>{item.new_lifecycle_status || item.new_moderation_status}</span>
                     </div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
@@ -650,7 +650,7 @@ export const ReportDetailPage: React.FC = () => {
           padding: '1rem',
         }}>
           <div className="card" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
               Edit Report Details
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
@@ -769,7 +769,7 @@ export const ReportDetailPage: React.FC = () => {
           padding: '1rem',
         }}>
           <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <HeartHandshake size={22} color="var(--primary)" /> Submit Ownership Claim
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>
