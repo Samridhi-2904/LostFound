@@ -8,7 +8,7 @@
 
 A complete, role-based web application engineered for campus lost and found management. The system allows visitors to search verified items safely, enables students to submit lost/found reports and confidential ownership claims, empowers security staff to manage physical custody lockers and verified handovers, and equips administrators with system metrics and immutable audit logs.
 
-Treat [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) and [`AGENTS.md`](AGENTS.md) as the architectural source of truth.
+Treat [`AGENTS.md`](AGENTS.md) as the architectural source of truth.
 
 ---
 
@@ -124,7 +124,7 @@ Open a new terminal window:
 
 ---
 
-## 👥 Demo Accounts for Evaluation & Viva
+## 👥 Demo Accounts
 
 The database seed script (`backend/scripts/seed_demo_data.py`) provisions the following accounts:
 
@@ -173,15 +173,7 @@ LostFound/
 ├── README.md                          # Project documentation & quickstart
 ├── pyproject.toml                     # Pytest and tooling configuration
 ├── pyrefly.toml                       # Python type checking configuration
-├── docs/
-│   ├── REQUIREMENTS.md                # Functional (FR-01 to FR-25) & NFR requirements
-│   ├── ARCHITECTURE.md                # System components & data flow
-│   ├── DATABASE.md                    # Entity-relationship design & invariants
-│   ├── API.md                         # REST API endpoints contract
-│   ├── UI.md                          # UI workflow and screen guidelines
-│   ├── IMPLEMENTATION_PLAN.md         # Staged 11-phase development roadmap
-│   ├── IMPLEMENTATION_PROGRESS.md     # Phase-by-phase completion report
-│   └── VIVA_AND_LAB_NOTES.md          # Comprehensive viva preparation & technical defense
+
 ├── backend/
 │   ├── alembic/                       # Schema migration version control
 │   ├── app/
@@ -204,9 +196,3 @@ LostFound/
     └── package.json                   # React 19, Vite, Lucide icons
 ```
 
----
-
-## 🎓 Student Viva & Lab Preparation
-
-For detailed questions and answers regarding database normalization, state transition rules, password security, JWT revocation, and defense talking points, please refer to:
-👉 [`docs/VIVA_AND_LAB_NOTES.md`](docs/VIVA_AND_LAB_NOTES.md)
