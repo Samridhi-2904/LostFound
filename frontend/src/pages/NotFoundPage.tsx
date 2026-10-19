@@ -8,7 +8,7 @@ export const NotFoundPage: React.FC = () => {
       <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: 'var(--radius-full)', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)', marginBottom: '1.25rem' }}>
         <Compass size={40} />
       </div>
-      <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>404</h1>
+      <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>404</h1>
       <h2 style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', fontWeight: 500 }}>
         Page Not Found
       </h2>

@@ -171,22 +171,45 @@ export const authApi = {
 // Category Endpoints
 export const categoryApi = {
   async getCategories(): Promise<Category[]> {
-    return request<Category[]>('/categories');
+    const list = await request<Category[]>('/categories');
+    return list.map((c) => ({
+      ...c,
+      name: c.category_name || c.name || '',
+      category_name: c.category_name || c.name || '',
+    }));
   },
   async getAdminCategories(): Promise<Category[]> {
-    return request<Category[]>('/admin/categories');
+    const list = await request<Category[]>('/admin/categories');
+    return list.map((c) => ({
+      ...c,
+      name: c.category_name || c.name || '',
+      category_name: c.category_name || c.name || '',
+    }));
   },
-  async createCategory(data: { name: string; description?: string }): Promise<Category> {
-    return request<Category>('/admin/categories', {
+  async createCategory(data: { name?: string; category_name?: string; description?: string }): Promise<Category> {
+    const payload = {
+      category_name: data.category_name || data.name || '',
+      description: data.description,
+    };
+    const c = await request<Category>('/admin/categories', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
+    return { ...c, name: c.category_name || c.name, category_name: c.category_name || c.name };
   },
-  async updateCategory(id: number, data: { name?: string; description?: string; is_active?: boolean }): Promise<Category> {
-    return request<Category>(`/admin/categories/${id}`, {
+  async updateCategory(id: number, data: { name?: string; category_name?: string; description?: string; is_active?: boolean }): Promise<Category> {
+    const payload: any = {
+      description: data.description,
+      is_active: data.is_active,
+    };
+    if (data.category_name || data.name) {
+      payload.category_name = data.category_name || data.name;
+    }
+    const c = await request<Category>(`/admin/categories/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
+    return { ...c, name: c.category_name || c.name, category_name: c.category_name || c.name };
   },
 };
 
@@ -213,6 +236,31 @@ export const custodyApi = {
 };
 
 // Reports Endpoints
+// Normalizer: maps backend field names to frontend ItemReport shape
+function normalizeReport(raw: any): ItemReport {
+  return {
+    ...raw,
+    title: raw.title || raw.item_name || 'Untitled',
+    description: raw.description || '',
+    location_approximate: raw.location_approximate || raw.location || '',
+    date_incident: raw.date_incident || raw.date_lost_found || raw.date_reported || '',
+    primary_colour: raw.primary_colour || raw.colour || null,
+    brand: raw.brand || null,
+    model: raw.model || null,
+    is_high_value: raw.is_high_value ?? false,
+    images: raw.images || [],
+    updated_at: raw.updated_at || raw.created_at || '',
+    category: raw.category || (raw.category_name ? { category_id: raw.category_id, name: raw.category_name, category_name: raw.category_name, is_active: true } : null),
+    // found subtype
+    custody_location_id: raw.custody_location_id || raw.found_item?.custody_location_id || null,
+    custody_location: raw.custody_location || (raw.found_item?.custody_location_name ? { name: raw.found_item.custody_location_name, facility_name: raw.found_item.custody_location_name, is_active: true } : null),
+    storage_reference: raw.storage_reference || null,
+    // lost subtype
+    possible_locations: raw.possible_locations || raw.lost_item?.last_seen_location || null,
+    reward_offered: raw.reward_offered ?? raw.lost_item?.reward_offered ?? null,
+  };
+}
+
 export const reportApi = {
   async searchReports(params: SearchReportsParams = {}): Promise<PaginatedResponse<ItemReport>> {
     const search = new URLSearchParams();
@@ -226,32 +274,41 @@ export const reportApi = {
     if (params.date_to) search.append('date_to', params.date_to);
     if (params.page) search.append('page', params.page.toString());
     if (params.page_size) search.append('page_size', params.page_size.toString());
+    search.append('envelope', 'true');
 
-    return request<PaginatedResponse<ItemReport>>(`/reports?${search.toString()}`);
+    const res = await request<PaginatedResponse<any>>(`/reports?${search.toString()}`);
+    return {
+      ...res,
+      items: (res.items || []).map(normalizeReport),
+    };
   },
 
   async getReport(id: number): Promise<ItemReport> {
-    return request<ItemReport>(`/reports/${id}`);
+    const raw = await request<any>(`/reports/${id}`);
+    return normalizeReport(raw);
   },
 
   async createReport(data: any): Promise<ItemReport> {
-    return request<ItemReport>('/reports', {
+    const raw = await request<any>('/reports', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return normalizeReport(raw);
   },
 
   async updateReport(id: number, data: any): Promise<ItemReport> {
-    return request<ItemReport>(`/reports/${id}`, {
+    const raw = await request<any>(`/reports/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+    return normalizeReport(raw);
   },
 
   async closeReport(id: number): Promise<ItemReport> {
-    return request<ItemReport>(`/reports/${id}/close`, {
+    const raw = await request<any>(`/reports/${id}/close`, {
       method: 'POST',
     });
+    return normalizeReport(raw);
   },
 
   async getReportHistory(id: number): Promise<any[]> {
@@ -287,19 +344,22 @@ export const reportApi = {
 // Staff Moderation & Queues
 export const staffApi = {
   async getPendingReports(): Promise<ItemReport[]> {
-    return request<ItemReport[]>('/staff/reports/pending');
+    const list = await request<any[]>('/staff/reports/pending');
+    return list.map(normalizeReport);
   },
   async verifyReport(id: number, notes?: string): Promise<ItemReport> {
-    return request<ItemReport>(`/staff/reports/${id}/verify`, {
+    const raw = await request<any>(`/staff/reports/${id}/verify`, {
       method: 'POST',
       body: JSON.stringify({ reason: notes || 'Verified by staff moderation.' }),
     });
+    return normalizeReport(raw);
   },
   async rejectReport(id: number, reason: string): Promise<ItemReport> {
-    return request<ItemReport>(`/staff/reports/${id}/reject`, {
+    const raw = await request<any>(`/staff/reports/${id}/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     });
+    return normalizeReport(raw);
   },
   async getStaffClaims(status?: string): Promise<Claim[]> {
     const q = status ? `?claim_status=${status}` : '';

@@ -1,7 +1,7 @@
 import math
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from typing import Any, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -12,7 +12,6 @@ from app.models.user import User
 from app.schemas.report import (
     ReportCreate,
     ReportDetailResponse,
-    ReportPublicResponse,
     ReportStatusHistoryResponse,
     ReportUpdate,
 )
@@ -36,9 +35,10 @@ def list_reports(
     lifecycle_status: Optional[LifecycleStatus] = Query(None, description="Filter by lifecycle status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    envelope: bool = Query(False, description="Wrap in pagination envelope metadata object"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
-) -> Dict[str, Any]:
+) -> Any:
     """Browse and filter lost/found reports. Visitors only see verified, non-archived reports."""
     is_staff_or_admin = current_user and current_user.role in (UserRole.STAFF, UserRole.ADMIN)
 
@@ -104,13 +104,15 @@ def list_reports(
     items = [ReportService.format_report_dict(r, current_user) for r in reports]
     total_pages = math.ceil(total / page_size) if page_size > 0 else 0
 
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": total_pages,
-    }
+    if envelope:
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        }
+    return items
 
 
 @router.post(

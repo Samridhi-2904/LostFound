@@ -70,13 +70,34 @@ export const Navbar: React.FC = () => {
               Report Found
             </Link>
 
+            {isAuthenticated && !isStaff && (
+              <Link 
+                to="/profile" 
+                className={`nav-link ${isActive('/profile') ? 'active' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <User size={16} />
+                My Dashboard
+              </Link>
+            )}
+
             {isStaff && (
               <Link 
                 to="/staff/dashboard" 
-                className={`nav-link ${location.pathname.startsWith('/staff') || location.pathname.startsWith('/admin') ? 'active' : ''}`}
-                style={{ color: '#a78bfa', fontWeight: 600 }}
+                className={`nav-link ${isActive('/staff/dashboard') ? 'active' : ''}`}
+                style={{ fontWeight: 600, color: 'var(--secondary)' }}
               >
-                {isAdmin ? 'Admin Portal' : 'Staff Portal'}
+                Staff Desk
+              </Link>
+            )}
+
+            {isAdmin && (
+              <Link 
+                to="/admin/dashboard" 
+                className={`nav-link ${isActive('/admin/dashboard') ? 'active' : ''}`}
+                style={{ fontWeight: 600, color: '#4338ca' }}
+              >
+                Admin Console
               </Link>
             )}
           </div>
@@ -178,14 +199,33 @@ export const Navbar: React.FC = () => {
           >
             <ShieldCheck size={18} /> Report Found Property
           </Link>
+          {isAuthenticated && !isStaff && (
+            <Link 
+              to="/profile" 
+              className="nav-link" 
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <User size={18} /> My Dashboard
+            </Link>
+          )}
           {isStaff && (
             <Link 
               to="/staff/dashboard" 
               className="nav-link" 
               onClick={() => setMobileMenuOpen(false)}
-              style={{ color: '#a78bfa' }}
+              style={{ color: 'var(--secondary)' }}
             >
-              {isAdmin ? 'Admin Portal' : 'Staff Moderation'}
+              Staff Desk
+            </Link>
+          )}
+          {isAdmin && (
+            <Link 
+              to="/admin/dashboard" 
+              className="nav-link" 
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ color: '#4338ca' }}
+            >
+              Admin Console
             </Link>
           )}
         </div>

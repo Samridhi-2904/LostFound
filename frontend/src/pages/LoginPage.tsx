@@ -39,10 +39,10 @@ export const LoginPage: React.FC = () => {
     <div style={{ maxWidth: '440px', margin: '2rem auto', padding: '0 1rem' }}>
       <div className="card" style={{ padding: '2.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', color: '#fff', marginBottom: '1rem', boxShadow: '0 4px 12px var(--primary-glow)' }}>
+          <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: '#fff', marginBottom: '1rem', boxShadow: '0 2px 8px var(--primary-glow)' }}>
             <Compass size={28} />
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginBottom: '0.4rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
             Welcome Back
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>

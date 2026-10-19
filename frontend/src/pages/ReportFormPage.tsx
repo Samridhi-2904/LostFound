@@ -32,7 +32,7 @@ export const ReportFormPage: React.FC<ReportFormPageProps> = ({ initialType }) =
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [dateIncident, setDateIncident] = useState(new Date().toISOString().split('T')[0]);
+  const [dateIncident, setDateIncident] = useState(() => new Date().toISOString().split('T')[0]);
   const [locationApproximate, setLocationApproximate] = useState('');
   const [primaryColour, setPrimaryColour] = useState('');
   const [brand, setBrand] = useState('');
@@ -79,7 +79,7 @@ export const ReportFormPage: React.FC<ReportFormPageProps> = ({ initialType }) =
     return (
       <div className="card" style={{ maxWidth: '520px', margin: '3rem auto', textAlign: 'center', padding: '3rem' }}>
         <Lock size={40} color="var(--primary)" style={{ margin: '0 auto 1rem' }} />
-        <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '0.5rem' }}>Authentication Required</h2>
+        <h2 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', marginBottom: '0.5rem' }}>Authentication Required</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
           Please sign in to submit a {reportType} item report. This ensures you can track status updates and receive match notifications.
         </p>
@@ -161,7 +161,7 @@ export const ReportFormPage: React.FC<ReportFormPageProps> = ({ initialType }) =
           <span className="navbar-logo-badge" style={{ background: isFound ? 'rgba(6, 182, 212, 0.2)' : 'rgba(244, 63, 94, 0.2)', color: isFound ? '#38bdf8' : '#fb7185' }}>
             {isFound ? <ShieldCheck size={22} /> : <PlusCircle size={22} />}
           </span>
-          <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
             {isFound ? 'Report Found Property' : 'Report a Lost Item'}
           </h1>
         </div>

@@ -11,7 +11,10 @@ import {
   CheckCircle2, 
   Sparkles,
   Layers,
-  HeartHandshake
+  HeartHandshake,
+  Lock,
+  Building2,
+  Clock
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -41,45 +44,43 @@ export const HomePage: React.FC = () => {
   return (
     <div>
       {/* Hero Section */}
-      <section style={{ textAlign: 'center', padding: '3.5rem 1rem 4rem', position: 'relative' }}>
+      <section style={{ textAlign: 'center', padding: '3rem 1rem 3.5rem', position: 'relative' }}>
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.5rem',
           padding: '0.4rem 1rem',
           borderRadius: 'var(--radius-full)',
-          background: 'rgba(99, 102, 241, 0.12)',
-          border: '1px solid rgba(99, 102, 241, 0.3)',
-          color: '#a5b4fc',
+          background: 'var(--primary-light)',
+          border: '1px solid #bfdbfe',
+          color: 'var(--primary)',
           fontSize: '0.85rem',
           fontWeight: 600,
-          marginBottom: '1.5rem',
+          marginBottom: '1.25rem',
         }}>
-          <Sparkles size={14} /> Official Campus Lost &amp; Found System
+          <Sparkles size={14} /> Official Campus Lost &amp; Found Portal
         </div>
 
         <h1 style={{
-          fontSize: 'clamp(2.2rem, 5vw, 3.8rem)',
+          fontSize: 'clamp(2.1rem, 4.5vw, 3.4rem)',
           fontWeight: 800,
-          lineHeight: 1.15,
-          letterSpacing: '-0.03em',
+          lineHeight: 1.2,
+          letterSpacing: '-0.025em',
           maxWidth: '850px',
-          margin: '0 auto 1.5rem',
-          background: 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          margin: '0 auto 1.25rem',
+          color: 'var(--text-primary)',
         }}>
           Reuniting Misplaced Property With Its Rightful Owner.
         </h1>
 
         <p style={{
-          fontSize: '1.15rem',
+          fontSize: '1.1rem',
           color: 'var(--text-secondary)',
-          maxWidth: '640px',
+          maxWidth: '680px',
           margin: '0 auto 2.5rem',
           lineHeight: 1.6,
         }}>
-          Report lost items immediately, record found valuables securely, and track items with verifiable custody and human-reviewed handover confirmations.
+          Report lost items immediately, turn in found property at official custody lockers, and safely reclaim items with verified proof of ownership.
         </p>
 
         {/* Quick Search Bar */}
@@ -89,24 +90,24 @@ export const HomePage: React.FC = () => {
             window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
           }}
           style={{
-            maxWidth: '600px',
-            margin: '0 auto 3rem',
+            maxWidth: '620px',
+            margin: '0 auto 2.5rem',
             display: 'flex',
             gap: '0.5rem',
-            background: 'var(--bg-surface-elevated)',
-            padding: '0.4rem',
+            background: '#ffffff',
+            padding: '0.45rem',
             borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--border-subtle)',
-            boxShadow: 'var(--shadow-lg), 0 0 30px -10px var(--primary-glow)',
+            boxShadow: 'var(--shadow-md)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '1rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0.85rem', color: 'var(--text-muted)' }}>
             <Search size={20} />
           </div>
           <input
             type="text"
             className="form-input"
-            placeholder="Search by keyword (e.g., blue backpack, MacBook, student ID)..."
+            placeholder="Search by keyword (e.g., MacBook, Blue Backpack, Student ID)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -114,74 +115,170 @@ export const HomePage: React.FC = () => {
               border: 'none',
               boxShadow: 'none',
               padding: '0.75rem 0.5rem',
+              color: 'var(--text-primary)',
             }}
           />
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem' }}>
-            Search
+          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.6rem' }}>
+            Search Items
           </button>
         </form>
 
-        {/* Action Cards */}
+        {/* Quick Action Cards */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '1.5rem',
-          maxWidth: '960px',
+          maxWidth: '980px',
           margin: '0 auto',
           textAlign: 'left',
         }}>
-          <Link to="/report/lost" className="card card-hover" style={{ borderLeft: '4px solid #fb7185' }}>
+          {/* Lost Property */}
+          <Link to="/report/lost" className="card card-hover" style={{ borderTop: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <span className="navbar-logo-badge" style={{ background: 'rgba(244, 63, 94, 0.2)', color: '#fb7185' }}>
-                <PlusCircle size={20} />
-              </span>
-              <h3 style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 700 }}>Lost Something?</h3>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-md)',
+                background: '#fee2e2',
+                color: '#b91c1c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <PlusCircle size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 700 }}>Lost Something?</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>File an official lost report</span>
+              </div>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
-              Submit a detailed report with approximate location, date, and description. Our system scans new entries to detect potential matches.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Submit item description, date, and last seen location. The system will alert you when matching property is handed in.
             </p>
-            <span style={{ color: '#fb7185', fontSize: '0.88rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              Create Lost Report <ArrowRight size={15} />
+            <span style={{ color: '#b91c1c', fontSize: '0.88rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              Report Lost Property <ArrowRight size={15} />
             </span>
           </Link>
 
-          <Link to="/report/found" className="card card-hover" style={{ borderLeft: '4px solid #38bdf8' }}>
+          {/* Found Property */}
+          <Link to="/report/found" className="card card-hover" style={{ borderTop: '4px solid #059669' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <span className="navbar-logo-badge" style={{ background: 'rgba(6, 182, 212, 0.2)', color: '#38bdf8' }}>
-                <ShieldCheck size={20} />
-              </span>
-              <h3 style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 700 }}>Found Property?</h3>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-md)',
+                background: '#d1fae5',
+                color: '#047857',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <ShieldCheck size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 700 }}>Found Property?</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Turn in at campus custody</span>
+              </div>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
-              Log found items to deposit them at official campus custody. Locker references remain restricted to protect privacy and property.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Deposit found items into official security lockers or info desks. Precise locker PINs remain restricted to staff.
             </p>
-            <span style={{ color: '#38bdf8', fontSize: '0.88rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ color: '#047857', fontSize: '0.88rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               Turn In Found Item <ArrowRight size={15} />
             </span>
           </Link>
 
-          <Link to="/search" className="card card-hover" style={{ borderLeft: '4px solid #a855f7' }}>
+          {/* Browse Directory */}
+          <Link to="/search" className="card card-hover" style={{ borderTop: '4px solid #2563eb' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <span className="navbar-logo-badge" style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc' }}>
-                <Layers size={20} />
-              </span>
-              <h3 style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 700 }}>Browse Public Feed</h3>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-md)',
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Layers size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 700 }}>Browse Public Feed</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Search verified listings</span>
+              </div>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
-              Filter through verified reports across campus locations, categories, colors, and date ranges with real-time status tracking.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Filter through verified reports across categories, colors, dates, and locations with live status indicators.
             </p>
-            <span style={{ color: '#c084fc', fontSize: '0.88rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              Explore All Items <ArrowRight size={15} />
+            <span style={{ color: '#1d4ed8', fontSize: '0.88rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              Explore Directory <ArrowRight size={15} />
             </span>
           </Link>
+        </div>
+      </section>
+
+      {/* Campus Trust & Metrics Strip */}
+      <section style={{
+        background: '#ffffff',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '1.5rem 2rem',
+        marginBottom: '3.5rem',
+        boxShadow: 'var(--shadow-sm)',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '2rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', background: '#eff6ff', color: '#1d4ed8' }}>
+            <ShieldCheck size={26} />
+          </div>
+          <div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>100% Verified</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Human Staff Handover Sign-off</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', background: '#ecfdf5', color: '#047857' }}>
+            <Building2 size={26} />
+          </div>
+          <div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>Custody Vaults</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Secured Campus Lockers</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', background: '#fffbeb', color: '#b45309' }}>
+            <Lock size={26} />
+          </div>
+          <div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>Confidential</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Masked Finder Contact Details</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', background: '#f5f3ff', color: '#6d28d9' }}>
+            <Clock size={26} />
+          </div>
+          <div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>30-Day Policy</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Standard Campus Retention</div>
+          </div>
         </div>
       </section>
 
       {/* Category Pills */}
       {categories.length > 0 && (
         <section style={{ marginBottom: '3.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff' }}>Browse By Category</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)' }}>Browse By Category</h2>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>Find items categorized by campus property types</p>
+            </div>
             <Link to="/search" style={{ fontSize: '0.88rem', color: 'var(--primary)', fontWeight: 600 }}>
               View All Categories &rarr;
             </Link>
@@ -192,7 +289,7 @@ export const HomePage: React.FC = () => {
                 key={cat.category_id}
                 to={`/search?category_id=${cat.category_id}`}
                 className="btn btn-secondary btn-sm"
-                style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.1rem' }}
+                style={{ borderRadius: 'var(--radius-full)', padding: '0.55rem 1.25rem', fontWeight: 500 }}
               >
                 {cat.name}
               </Link>
@@ -203,11 +300,11 @@ export const HomePage: React.FC = () => {
 
       {/* Recent Items Section */}
       <section style={{ marginBottom: '4rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>Recently Reported Items</h2>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-primary)' }}>Recently Verified Items</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Verified active listings from across campus.
+              Latest lost and found property authenticated by campus desk officers.
             </p>
           </div>
           <Link to="/search" className="btn btn-outline btn-sm">
@@ -216,7 +313,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
             Loading verified listings...
           </div>
         ) : recentReports.length > 0 ? (
@@ -237,52 +334,166 @@ export const HomePage: React.FC = () => {
         )}
       </section>
 
-      {/* Trust & Safety Invariants Banner */}
+      {/* 4-Step How It Works Guide */}
+      <section style={{ marginBottom: '4rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+            How Campus Lost &amp; Found Works
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '580px', margin: '0 auto' }}>
+            A transparent 4-stage chain of custody ensuring items are safely stored and returned only to proven owners.
+          </p>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1.5rem',
+        }}>
+          <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              fontWeight: 800,
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.2rem',
+            }}>
+              1
+            </div>
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+              Submit Report
+            </h4>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Register your misplaced item or log property found across campus facilities.
+            </p>
+          </div>
+
+          <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#f5f3ff',
+              color: '#6d28d9',
+              fontWeight: 800,
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.2rem',
+            }}>
+              2
+            </div>
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+              Advisory Match
+            </h4>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              The multi-signal matching engine flags candidate items for mutual review.
+            </p>
+          </div>
+
+          <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#fffbeb',
+              color: '#b45309',
+              fontWeight: 800,
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.2rem',
+            }}>
+              3
+            </div>
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+              Claim &amp; Proof
+            </h4>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Submit private ownership evidence. Authorized staff evaluate and approve the claim.
+            </p>
+          </div>
+
+          <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              color: '#047857',
+              fontWeight: 800,
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.2rem',
+            }}>
+              4
+            </div>
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+              Verified Handover
+            </h4>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Present student ID at the custody desk to sign for and retrieve your belongings.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Safety & Policy Banner */}
       <section className="card" style={{
-        background: 'linear-gradient(135deg, rgba(22, 28, 45, 0.9) 0%, rgba(30, 27, 75, 0.6) 100%)',
-        border: '1px solid rgba(99, 102, 241, 0.25)',
+        background: '#f8fafc',
+        border: '1px solid var(--border-subtle)',
         padding: '2.5rem',
         marginBottom: '2rem',
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '2rem' }}>
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <span style={{ color: '#10b981', flexShrink: 0 }}>
+            <span style={{ color: '#059669', flexShrink: 0 }}>
               <CheckCircle2 size={24} />
             </span>
             <div>
-              <h4 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 600 }}>
-                Privacy-Protected Details
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 700 }}>
+                Privacy-Protected Records
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Finder contact info and restricted locker addresses are shielded from public view to ensure student safety.
+                Finder contact info and restricted locker PINs are shielded from public view to protect student privacy and custody security.
               </p>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <span style={{ color: '#6366f1', flexShrink: 0 }}>
+            <span style={{ color: '#1d4ed8', flexShrink: 0 }}>
               <HeartHandshake size={24} />
             </span>
             <div>
-              <h4 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 600 }}>
-                Verified Claims Only
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 700 }}>
+                Official Handover Sign-Off
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Ownership evidence is confidential. Handover is recorded and signed off by authorized campus staff.
+                An item transitions to "Returned" only after an approved claim and an in-person physical handover record verified by staff.
               </p>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <span style={{ color: '#f59e0b', flexShrink: 0 }}>
+            <span style={{ color: '#d97706', flexShrink: 0 }}>
               <Sparkles size={24} />
             </span>
             <div>
-              <h4 style={{ color: '#fff', fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 600 }}>
-                Advisory Match Assistant
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 700 }}>
+                Advisory Matching Engine
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Automated similarity scoring assists human staff in connecting potential owners with logged found property.
+                Automated similarity scoring assists human review, ensuring every match is carefully vetted before handover.
               </p>
             </div>
           </div>

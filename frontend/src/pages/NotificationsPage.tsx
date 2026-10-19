@@ -51,7 +51,7 @@ export const NotificationsPage: React.FC = () => {
     <div style={{ maxWidth: '780px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.25rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
             Notifications
           </h1>
           <p style={{ color: 'var(--text-secondary)' }}>
@@ -95,7 +95,7 @@ export const NotificationsPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Bell size={16} color={n.is_read ? 'var(--text-muted)' : 'var(--primary)'} />
-                  <h4 style={{ color: '#fff', fontSize: '1rem', fontWeight: 600 }}>{n.title}</h4>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600 }}>{n.title}</h4>
                 </div>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   {new Date(n.created_at).toLocaleString()}
@@ -133,7 +133,7 @@ export const NotificationsPage: React.FC = () => {
       ) : (
         <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
           <Bell size={36} color="var(--text-muted)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem' }}>No Notifications</h3>
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Notifications</h3>
           <p style={{ color: 'var(--text-secondary)' }}>You're all caught up! New alerts will appear here.</p>
         </div>
       )}
