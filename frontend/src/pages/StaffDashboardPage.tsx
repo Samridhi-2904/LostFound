@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { staffApi, custodyApi } from '../services/api';
+import { staffApi, custodyApi, reportApi } from '../services/api';
 import type { ItemReport, Claim, CustodyLocation } from '../types';
 import { Link } from 'react-router-dom';
 import { 
@@ -12,11 +12,16 @@ import {
   Archive, 
   ExternalLink,
   Clock,
-  Layers,
   ArrowRight,
   ShieldAlert,
   FileCheck,
-  Check
+  Check,
+  Trash2,
+  PackageCheck,
+  Search,
+  Filter,
+  Eye,
+  Box
 } from 'lucide-react';
 
 export const StaffDashboardPage: React.FC = () => {
@@ -25,10 +30,15 @@ export const StaffDashboardPage: React.FC = () => {
   const [pendingReports, setPendingReports] = useState<ItemReport[]>([]);
   const [claimsQueue, setClaimsQueue] = useState<Claim[]>([]);
   const [custodyLocations, setCustodyLocations] = useState<CustodyLocation[]>([]);
+  const [foundInventory, setFoundInventory] = useState<ItemReport[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Tab navigation
-  const [activeTab, setActiveTab] = useState<'reports' | 'claims' | 'transfer' | 'lifecycle'>('reports');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'reports' | 'claims' | 'transfer' | 'lifecycle'>('inventory');
+
+  // Inventory Filter & Search
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryFilter, setInventoryFilter] = useState<'all' | 'in_custody' | 'returned' | 'archived_disposed'>('all');
 
   // Notifications
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -61,18 +71,25 @@ export const StaffDashboardPage: React.FC = () => {
   const [lifecycleConfirm, setLifecycleConfirm] = useState(false);
   const [submittingLifecycle, setSubmittingLifecycle] = useState(false);
 
+  // Delete Report Modal State (Permanent database removal)
+  const [deletingReport, setDeletingReport] = useState<ItemReport | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [submittingDelete, setSubmittingDelete] = useState(false);
+
   const loadStaffData = useCallback(async () => {
     setLoading(true);
     setActionError(null);
     try {
-      const [pending, claims, locs] = await Promise.all([
+      const [pending, claims, locs, foundReportsRes] = await Promise.all([
         staffApi.getPendingReports().catch(() => []),
         staffApi.getStaffClaims().catch(() => []),
         custodyApi.getAdminLocations().catch(() => []),
+        reportApi.searchReports({ report_type: 'found', page_size: 100 }).catch(() => ({ items: [] })),
       ]);
       setPendingReports(pending);
       setClaimsQueue(claims);
       if (locs) setCustodyLocations(locs);
+      if (foundReportsRes?.items) setFoundInventory(foundReportsRes.items);
     } catch (err: any) {
       setActionError(err.message || 'Failed to load staff moderation queues.');
     } finally {
@@ -89,6 +106,7 @@ export const StaffDashboardPage: React.FC = () => {
       await staffApi.verifyReport(reportId, 'Verified by staff moderation desk.');
       setActionSuccess(`Report #${reportId} verified and published.`);
       setPendingReports((prev) => prev.filter((r) => r.report_id !== reportId));
+      loadStaffData();
     } catch (err: any) {
       setActionError(err.message || 'Verification failed.');
     }
@@ -102,6 +120,7 @@ export const StaffDashboardPage: React.FC = () => {
       await staffApi.rejectReport(reportId, reason);
       setActionSuccess(`Report #${reportId} rejected.`);
       setPendingReports((prev) => prev.filter((r) => r.report_id !== reportId));
+      loadStaffData();
     } catch (err: any) {
       setActionError(err.message || 'Rejection failed.');
     }
@@ -140,7 +159,7 @@ export const StaffDashboardPage: React.FC = () => {
         condition_of_item: itemCondition,
         notes: handoverNotes || undefined,
       });
-      setActionSuccess(`Handover confirmed! Item marked as Returned in the permanent record.`);
+      setActionSuccess(`Handover confirmed! Item marked as Returned and given to claimant.`);
       setHandoverClaim(null);
       setHandoverConfirmation('');
       setHandoverNotes('');
@@ -206,9 +225,51 @@ export const StaffDashboardPage: React.FC = () => {
     }
   };
 
+  const handleDeleteReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletingReport) return;
+
+    setSubmittingDelete(true);
+    setActionError(null);
+
+    try {
+      await reportApi.deleteReport(deletingReport.report_id, deleteReason.trim() || 'Removed by staff');
+      setActionSuccess(`Report #${deletingReport.report_id} (${deletingReport.item_name || deletingReport.title}) permanently removed from database.`);
+      setDeletingReport(null);
+      setDeleteReason('');
+      loadStaffData();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to remove report from database.');
+    } finally {
+      setSubmittingDelete(false);
+    }
+  };
+
   const pendingVerificationCount = pendingReports.length;
   const approvedForHandoverClaims = claimsQueue.filter((c) => c.claim_status === 'approved');
-  const pendingEvaluationClaims = claimsQueue.filter((c) => c.claim_status === 'pending' || c.claim_status === 'more_information_requested');
+
+  const returnedItems = foundInventory.filter((r) => r.lifecycle_status === 'returned');
+  const inCustodyItems = foundInventory.filter((r) => r.lifecycle_status !== 'returned' && r.lifecycle_status !== 'archived' && r.lifecycle_status !== 'disposed');
+  const archivedOrDisposedItems = foundInventory.filter((r) => r.lifecycle_status === 'archived' || r.lifecycle_status === 'disposed');
+
+  const filteredInventory = foundInventory.filter((r) => {
+    if (inventoryFilter === 'in_custody') {
+      if (r.lifecycle_status === 'returned' || r.lifecycle_status === 'archived' || r.lifecycle_status === 'disposed') return false;
+    } else if (inventoryFilter === 'returned') {
+      if (r.lifecycle_status !== 'returned') return false;
+    } else if (inventoryFilter === 'archived_disposed') {
+      if (r.lifecycle_status !== 'archived' && r.lifecycle_status !== 'disposed') return false;
+    }
+
+    if (inventorySearch.trim()) {
+      const q = inventorySearch.toLowerCase();
+      const matchName = (r.item_name || r.title || '').toLowerCase().includes(q);
+      const matchRef = (r.case_reference || '').toLowerCase().includes(q);
+      const matchLoc = (r.location || r.location_approximate || '').toLowerCase().includes(q);
+      return matchName || matchRef || matchLoc;
+    }
+    return true;
+  });
 
   return (
     <div>
@@ -234,7 +295,7 @@ export const StaffDashboardPage: React.FC = () => {
             Staff Operations Workstation
           </h1>
           <p style={{ color: '#ccfbf1', fontSize: '0.95rem' }}>
-            Intake report verification, claim ownership evaluations, in-person physical handovers, and secure locker management.
+            Manage found &amp; given items, execute verified handovers, moderate reports, relocate custody vaults, and remove invalid items from database.
           </p>
         </div>
 
@@ -263,26 +324,26 @@ export const StaffDashboardPage: React.FC = () => {
       <div className="metrics-grid">
         <div className="metric-card">
           <div className="metric-icon-wrap" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-            <Clock size={24} />
+            <Box size={24} />
           </div>
           <div className="metric-info">
-            <span className="metric-value">{pendingVerificationCount}</span>
-            <span className="metric-label">Reports Awaiting Verification</span>
-          </div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-icon-wrap" style={{ background: '#fffbeb', color: '#b45309' }}>
-            <FileCheck size={24} />
-          </div>
-          <div className="metric-info">
-            <span className="metric-value">{pendingEvaluationClaims.length}</span>
-            <span className="metric-label">Claims Under Staff Review</span>
+            <span className="metric-value">{inCustodyItems.length}</span>
+            <span className="metric-label">Items Found &amp; in Custody</span>
           </div>
         </div>
 
         <div className="metric-card">
           <div className="metric-icon-wrap" style={{ background: '#ecfdf5', color: '#047857' }}>
+            <PackageCheck size={24} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-value">{returnedItems.length}</span>
+            <span className="metric-label">Items Given to Owner (Returned)</span>
+          </div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-icon-wrap" style={{ background: '#fffbeb', color: '#b45309' }}>
             <HeartHandshake size={24} />
           </div>
           <div className="metric-info">
@@ -293,17 +354,24 @@ export const StaffDashboardPage: React.FC = () => {
 
         <div className="metric-card">
           <div className="metric-icon-wrap" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
-            <Layers size={24} />
+            <Clock size={24} />
           </div>
           <div className="metric-info">
-            <span className="metric-value">{custodyLocations.length}</span>
-            <span className="metric-label">Active Campus Vaults</span>
+            <span className="metric-value">{pendingVerificationCount}</span>
+            <span className="metric-label">Awaiting Verification</span>
           </div>
         </div>
       </div>
 
       {/* Operational Navigation Tabs */}
       <div className="dashboard-tabs">
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`dashboard-tab-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+        >
+          <Box size={16} /> Found &amp; Given Items Registry ({foundInventory.length})
+        </button>
+
         <button
           onClick={() => setActiveTab('reports')}
           className={`dashboard-tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
@@ -335,10 +403,197 @@ export const StaffDashboardPage: React.FC = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-          Loading operational queues...
+          Loading operational records...
         </div>
       ) : (
         <>
+          {/* TAB 0: FOUND & GIVEN ITEMS INVENTORY */}
+          {activeTab === 'inventory' && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Found &amp; Returned Items Registry ({filteredInventory.length})
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Track all physical items turned in to campus custody: see which are safely stored, which have been given to verified owners, or remove invalid items from database.
+                  </p>
+                </div>
+
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Search item, case ref, location..."
+                    value={inventorySearch}
+                    onChange={(e) => setInventorySearch(e.target.value)}
+                    style={{ paddingLeft: '2.1rem', fontSize: '0.88rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Status Filter Chips */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.25rem' }}>
+                  <Filter size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+                  Filter State:
+                </span>
+                {[
+                  { id: 'all', label: `All Items (${foundInventory.length})` },
+                  { id: 'in_custody', label: `In Custody (${inCustodyItems.length})` },
+                  { id: 'returned', label: `Given to Owner (${returnedItems.length})` },
+                  { id: 'archived_disposed', label: `Archived / Disposed (${archivedOrDisposedItems.length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setInventoryFilter(f.id as any)}
+                    className={`btn btn-sm ${inventoryFilter === f.id ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {filteredInventory.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <p>No found items match the selected filter or search term.</p>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Case Ref</th>
+                        <th>Item Description</th>
+                        <th>Found Location</th>
+                        <th>Custody Storage</th>
+                        <th>Handover Status</th>
+                        <th style={{ textAlign: 'right' }}>Staff Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredInventory.map((item) => {
+                        const isReturned = item.lifecycle_status === 'returned';
+                        const isDisposed = item.lifecycle_status === 'disposed';
+                        const isArchived = item.lifecycle_status === 'archived';
+                        const approvedClaim = claimsQueue.find((c) => c.report_id === item.report_id && c.claim_status === 'approved');
+
+                        return (
+                          <tr key={item.report_id}>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.82rem' }}>
+                              {item.case_reference || `#${item.report_id}`}
+                            </td>
+                            <td>
+                              <strong style={{ color: 'var(--text-primary)' }}>{item.item_name || item.title}</strong>
+                              {item.category_name && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  Category: {item.category_name}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ fontSize: '0.85rem' }}>
+                              {item.location || item.location_approximate || 'Campus Grounds'}
+                            </td>
+                            <td style={{ fontSize: '0.85rem' }}>
+                              {item.found_item_staff?.custody_location_name || item.found_item?.custody_location_name || 'Central Vault'}
+                              {(item.found_item_staff?.storage_reference || item.found_item?.storage_reference) && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  Ref: {item.found_item_staff?.storage_reference || item.found_item?.storage_reference}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              {isReturned ? (
+                                <span className="badge" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 700 }}>
+                                  <Check size={12} style={{ display: 'inline', marginRight: '3px' }} /> Given to Owner (Returned)
+                                </span>
+                              ) : isDisposed ? (
+                                <span className="badge" style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+                                  Disposed
+                                </span>
+                              ) : isArchived ? (
+                                <span className="badge" style={{ background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb' }}>
+                                  Archived
+                                </span>
+                              ) : approvedClaim ? (
+                                <span className="badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 600 }}>
+                                  Claim Approved (Ready for Handover)
+                                </span>
+                              ) : (
+                                <span className="badge" style={{ background: '#f0fdfa', color: '#0f766e', border: '1px solid #99f6e4', fontWeight: 600 }}>
+                                  In Custody (Unclaimed)
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <Link
+                                to={`/reports/${item.report_id}`}
+                                className="btn btn-outline btn-sm"
+                                style={{ marginRight: '0.4rem', padding: '0.35rem 0.65rem' }}
+                                title="Inspect report details"
+                              >
+                                <Eye size={13} style={{ marginRight: '3px' }} /> Inspect
+                              </Link>
+
+                              {approvedClaim && !isReturned && (
+                                <button
+                                  onClick={() => {
+                                    setHandoverClaim(approvedClaim);
+                                    setHandoverConfirmation('');
+                                    setHandoverNotes('');
+                                  }}
+                                  className="btn btn-success btn-sm"
+                                  style={{ marginRight: '0.4rem', padding: '0.35rem 0.65rem', fontWeight: 600 }}
+                                  title="Execute handover to claimant"
+                                >
+                                  <HeartHandshake size={13} style={{ marginRight: '3px' }} /> Handover
+                                </button>
+                              )}
+
+                              {!isReturned && !isDisposed && !isArchived && (
+                                <button
+                                  onClick={() => {
+                                    setTransferReportId(String(item.report_id));
+                                    setActiveTab('transfer');
+                                  }}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ marginRight: '0.4rem', padding: '0.35rem 0.65rem' }}
+                                  title="Relocate custody vault"
+                                >
+                                  <ArrowRightLeft size={13} style={{ marginRight: '3px' }} /> Relocate
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setDeletingReport(item);
+                                  setDeleteReason('');
+                                }}
+                                className="btn btn-sm"
+                                style={{
+                                  background: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fca5a5',
+                                  padding: '0.35rem 0.65rem',
+                                  fontWeight: 600,
+                                }}
+                                title="Remove item permanently from database"
+                              >
+                                <Trash2 size={13} style={{ marginRight: '3px' }} /> Remove from DB
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 1: VERIFICATION QUEUE */}
           {activeTab === 'reports' && (
             <div className="card">
@@ -385,14 +640,14 @@ export const StaffDashboardPage: React.FC = () => {
                           </span>
                         </div>
                         <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                          {r.title}
+                          {r.title || r.item_name}
                         </h4>
                         <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', lineHeight: 1.5 }}>
                           {r.description}
                         </p>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                          <span><strong>Location:</strong> {r.location_approximate}</span>
-                          <span><strong>Date:</strong> {new Date(r.date_incident).toLocaleDateString()}</span>
+                          <span><strong>Location:</strong> {r.location || r.location_approximate}</span>
+                          <span><strong>Date:</strong> {new Date(r.date_incident || r.date_lost_found || '').toLocaleDateString()}</span>
                           {r.contact_info_restricted && (
                             <span style={{ color: '#b45309' }}>
                               <strong>Restricted Contact:</strong> {r.contact_info_restricted}
@@ -677,6 +932,72 @@ export const StaffDashboardPage: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Delete Report Confirmation Modal */}
+      {deletingReport && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', color: '#dc2626' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={22} color="#dc2626" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+                  Permanently Delete Item Report?
+                </h3>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Case Ref: {deletingReport.case_reference || `#${deletingReport.report_id}`}
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.85rem 1rem',
+              marginBottom: '1.25rem',
+              fontSize: '0.88rem',
+              color: '#991b1b',
+            }}>
+              <strong>Warning:</strong> You are about to permanently delete <strong>"{deletingReport.item_name || deletingReport.title}"</strong> from the database. All related claims and images will also be removed.
+            </div>
+
+            <form onSubmit={handleDeleteReport}>
+              <div className="form-group">
+                <label className="form-label">Staff Removal Reason *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Erroneous entry, duplicate submission, or test item"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeletingReport(null)}
+                  className="btn btn-outline btn-sm"
+                  disabled={submittingDelete}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingDelete}
+                  className="btn btn-sm"
+                  style={{ background: '#dc2626', color: '#ffffff', fontWeight: 600 }}
+                >
+                  {submittingDelete ? 'Deleting...' : 'Confirm Remove from Database'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Claim Decision Modal */}

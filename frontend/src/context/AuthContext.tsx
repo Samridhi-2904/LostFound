@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isStaff: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (data: { email: string; password: string; full_name: string; phone_number?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -53,9 +53,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [refreshUser]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     await authApi.login(email, password);
-    await refreshUser();
+    try {
+      const currentUser = await authApi.getCurrentUser();
+      setUser(currentUser);
+      return currentUser;
+    } catch {
+      return null;
+    }
   };
 
   const register = async (data: { email: string; password: string; full_name: string; phone_number?: string }) => {

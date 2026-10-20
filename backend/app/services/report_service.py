@@ -347,6 +347,34 @@ class ReportService:
         return report
 
     @staticmethod
+    def delete_report(db: Session, report_id: int, user: User, reason: Optional[str] = None) -> None:
+        """Permanently delete a report from the database. Allowed for ADMIN, or STAFF with reason."""
+        report = ReportService.get_by_id(db, report_id)
+
+        if user.role not in (UserRole.ADMIN, UserRole.STAFF):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only administrators or authorized staff can remove reports from the database.",
+            )
+
+        audit = AuditLog(
+            actor_user_id=user.user_id,
+            action="REPORT_DELETED",
+            entity_type="ItemReport",
+            entity_id=str(report.report_id),
+            summary=json.dumps({
+                "case_reference": report.case_reference,
+                "item_name": report.item_name,
+                "report_type": report.report_type.value,
+                "reason": reason or "Removed by staff/admin request",
+                "deleted_by": user.email,
+            }),
+        )
+        db.add(audit)
+        db.delete(report)
+        db.commit()
+
+    @staticmethod
     def moderate_report(
         db: Session,
         report_id: int,

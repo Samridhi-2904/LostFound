@@ -311,6 +311,13 @@ export const reportApi = {
     return normalizeReport(raw);
   },
 
+  async deleteReport(id: number, reason?: string): Promise<{ message: string }> {
+    const url = reason ? `/reports/${id}?reason=${encodeURIComponent(reason)}` : `/reports/${id}`;
+    return request<{ message: string }>(url, {
+      method: 'DELETE',
+    });
+  },
+
   async getReportHistory(id: number): Promise<any[]> {
     return request<any[]>(`/reports/${id}/history`);
   },

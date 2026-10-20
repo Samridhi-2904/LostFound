@@ -55,26 +55,33 @@ export interface ItemReport {
   case_reference: string;
   report_type: ReportType;
   title: string;
+  item_name?: string;
   description: string;
   category_id: number;
+  category_name?: string;
   category?: Category | null;
   date_incident: string;
+  date_lost_found?: string;
   primary_colour?: string | null;
+  colour?: string | null;
   brand?: string | null;
   model?: string | null;
   location_approximate: string;
+  location?: string;
   contact_info_restricted?: string | null;
   moderation_status: ModerationStatus;
   lifecycle_status: LifecycleStatus;
   is_high_value: boolean;
   creator_user_id: number;
   created_at: string;
-  updated_at: string;
-  images: ItemImage[];
+  updated_at?: string;
+  images?: ItemImage[];
   // Found subtype specific
   custody_location_id?: number | null;
   custody_location?: CustodyLocation | null;
   storage_reference?: string | null;
+  found_item?: any;
+  found_item_staff?: any;
   // Lost subtype specific
   possible_locations?: string | null;
   reward_offered?: number | null;

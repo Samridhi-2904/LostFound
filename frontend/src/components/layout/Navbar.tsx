@@ -26,6 +26,11 @@ export const Navbar: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // When on dashboard (which has its own dedicated sidebar navigation), hide the top navbar
+  if (location.pathname === '/dashboard' || location.pathname === '/profile') {
+    return null;
+  }
+
   return (
     <header className="navbar">
       <div className="navbar-inner">
@@ -72,8 +77,8 @@ export const Navbar: React.FC = () => {
 
             {isAuthenticated && !isStaff && (
               <Link 
-                to="/profile" 
-                className={`nav-link ${isActive('/profile') ? 'active' : ''}`}
+                to="/dashboard" 
+                className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
               >
                 <User size={16} />
@@ -122,7 +127,7 @@ export const Navbar: React.FC = () => {
                     </span>
                   </div>
                   <Link 
-                    to="/profile" 
+                    to={user.role === 'admin' ? '/admin/dashboard' : user.role === 'staff' ? '/staff/dashboard' : '/dashboard'} 
                     className="btn btn-secondary btn-sm" 
                     style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                   >
@@ -201,7 +206,7 @@ export const Navbar: React.FC = () => {
           </Link>
           {isAuthenticated && !isStaff && (
             <Link 
-              to="/profile" 
+              to="/dashboard" 
               className="nav-link" 
               onClick={() => setMobileMenuOpen(false)}
             >

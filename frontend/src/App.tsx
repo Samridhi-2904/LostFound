@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
@@ -11,11 +11,48 @@ import { ReportDetailPage } from './pages/ReportDetailPage';
 import { ReportFormPage } from './pages/ReportFormPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { ProfilePage } from './pages/ProfilePage';
+import { DashboardPage } from './pages/DashboardPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+
+/**
+ * Redirects authenticated users away from landing/login/register to dashboard.
+ * Shows children (public page) only if user is NOT logged in.
+ */
+const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            width: '40px', height: '40px',
+            border: '3px solid rgba(99, 102, 241, 0.2)',
+            borderTopColor: 'var(--primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }} />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    if (user?.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    if (user?.role === 'staff') {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 export const App: React.FC = () => {
   return (
@@ -25,29 +62,43 @@ export const App: React.FC = () => {
           <Navbar />
           <main className="main-content">
             <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<HomePage />} />
+              {/* Public-only routes: redirect to dashboard if already logged in */}
+              <Route path="/" element={
+                <PublicOnlyRoute>
+                  <HomePage />
+                </PublicOnlyRoute>
+              } />
+              <Route path="/login" element={
+                <PublicOnlyRoute>
+                  <LoginPage />
+                </PublicOnlyRoute>
+              } />
+              <Route path="/register" element={
+                <PublicOnlyRoute>
+                  <RegisterPage />
+                </PublicOnlyRoute>
+              } />
+
+              {/* Public Routes (accessible to everyone) */}
               <Route path="/search" element={<SearchPage />} />
               <Route path="/reports/:id" element={<ReportDetailPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
 
               {/* Protected Member Routes */}
               <Route path="/report/lost" element={<ReportFormPage initialType="lost" />} />
               <Route path="/report/found" element={<ReportFormPage initialType="found" />} />
               <Route
-                path="/profile"
+                path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <ProfilePage />
+                    <DashboardPage />
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/dashboard"
+                path="/profile"
                 element={
                   <ProtectedRoute>
-                    <ProfilePage />
+                    <DashboardPage />
                   </ProtectedRoute>
                 }
               />

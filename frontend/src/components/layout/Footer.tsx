@@ -1,10 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Compass, ShieldCheck, Lock, HeartHandshake } from 'lucide-react';
 
 const currentYear = new Date().getFullYear();
 
 export const Footer: React.FC = () => {
+  const location = useLocation();
+
+  if (location.pathname === '/dashboard' || location.pathname === '/profile') {
+    return null;
+  }
+
   return (
     <footer className="footer">
       <div className="footer-inner">

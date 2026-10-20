@@ -38,7 +38,7 @@ export const RegisterPage: React.FC = () => {
         password,
         phone_number: phoneNumber || undefined,
       });
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Registration failed. An account with this email may already exist.');
     } finally {

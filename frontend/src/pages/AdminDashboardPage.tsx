@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { adminApi, categoryApi, custodyApi } from '../services/api';
-import type { DashboardStats, User, Category, CustodyLocation, UserRole } from '../types';
+import { adminApi, categoryApi, custodyApi, reportApi } from '../services/api';
+import type { DashboardStats, User, Category, CustodyLocation, UserRole, ItemReport } from '../types';
 import { Link } from 'react-router-dom';
 import { 
   ShieldCheck, 
@@ -12,10 +12,15 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Plus, 
-  Activity,
-  FileCheck,
-  ArrowRight,
-  Search
+  Activity, 
+  FileCheck, 
+  ArrowRight, 
+  Search,
+  Trash2,
+  FileText,
+  Eye,
+  Filter,
+  PackageCheck
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -26,13 +31,17 @@ export const AdminDashboardPage: React.FC = () => {
   const [custodyLocations, setCustodyLocations] = useState<CustodyLocation[]>([]);
   const [userList, setUserList] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [reports, setReports] = useState<ItemReport[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Active Admin Module Tab
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'locations' | 'audit'>('users');
+  // Active Admin Module Tab: defaults to reports so admin can immediately see and manage all items
+  const [activeTab, setActiveTab] = useState<'reports' | 'users' | 'categories' | 'locations' | 'audit'>('reports');
 
-  // User search filter
+  // Search & Filters
   const [userSearch, setUserSearch] = useState('');
+  const [reportSearch, setReportSearch] = useState('');
+  const [reportTypeFilter, setReportTypeFilter] = useState<'all' | 'lost' | 'found'>('all');
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>('all');
 
   // Notifications
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -44,6 +53,11 @@ export const AdminDashboardPage: React.FC = () => {
   const [staffDept, setStaffDept] = useState('');
   const [staffDesk, setStaffDesk] = useState('');
   const [updatingRole, setUpdatingRole] = useState(false);
+
+  // Delete Report Modal
+  const [deletingReport, setDeletingReport] = useState<ItemReport | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [submittingDelete, setSubmittingDelete] = useState(false);
 
   // New Category State
   const [newCatName, setNewCatName] = useState('');
@@ -61,18 +75,20 @@ export const AdminDashboardPage: React.FC = () => {
     setLoading(true);
     setActionError(null);
     try {
-      const [statsData, adminCats, adminLocs, users, logs] = await Promise.all([
+      const [statsData, adminCats, adminLocs, users, logs, reportsRes] = await Promise.all([
         adminApi.getDashboardStats().catch(() => null),
         categoryApi.getAdminCategories().catch(() => []),
         custodyApi.getAdminLocations().catch(() => []),
         adminApi.getUsers().catch(() => []),
         adminApi.getAuditLogs({ limit: 50 }).catch(() => []),
+        reportApi.searchReports({ page: 1, page_size: 100 }).catch(() => ({ items: [] })),
       ]);
       if (statsData) setStats(statsData);
       if (adminCats) setCategories(adminCats);
       if (adminLocs) setCustodyLocations(adminLocs);
       if (users) setUserList(users);
       if (logs) setAuditLogs(logs);
+      if (reportsRes?.items) setReports(reportsRes.items);
     } catch (err: any) {
       setActionError(err.message || 'Failed to load administrator records.');
     } finally {
@@ -122,12 +138,13 @@ export const AdminDashboardPage: React.FC = () => {
     e.preventDefault();
     if (!newCatName.trim()) return;
     setCreatingCat(true);
+    setActionError(null);
     try {
       await categoryApi.createCategory({
         name: newCatName.trim(),
         description: newCatDesc.trim() || undefined,
       });
-      setActionSuccess(`Category "${newCatName}" created successfully.`);
+      setActionSuccess(`Category "${newCatName}" registered.`);
       setNewCatName('');
       setNewCatDesc('');
       loadAdminData();
@@ -142,6 +159,7 @@ export const AdminDashboardPage: React.FC = () => {
     e.preventDefault();
     if (!newLocFacility.trim() || !newLocBuilding.trim()) return;
     setCreatingLoc(true);
+    setActionError(null);
     try {
       await custodyApi.createLocation({
         facility_name: newLocFacility.trim(),
@@ -149,24 +167,70 @@ export const AdminDashboardPage: React.FC = () => {
         room_number: newLocRoom.trim() || undefined,
         restricted_details: newLocRestricted.trim() || undefined,
       });
-      setActionSuccess(`Storage facility "${newLocFacility}" created.`);
+      setActionSuccess(`Storage facility "${newLocFacility}" registered.`);
       setNewLocFacility('');
       setNewLocBuilding('');
       setNewLocRoom('');
       setNewLocRestricted('');
       loadAdminData();
     } catch (err: any) {
-      setActionError(err.message || 'Failed to create custody location.');
+      setActionError(err.message || 'Failed to create location.');
     } finally {
       setCreatingLoc(false);
     }
   };
 
-  const filteredUsers = userList.filter((u) => 
-    u.full_name.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.role.toLowerCase().includes(userSearch.toLowerCase())
-  );
+  const handleDeleteReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletingReport) return;
+    setSubmittingDelete(true);
+    setActionError(null);
+    try {
+      await reportApi.deleteReport(deletingReport.report_id, deleteReason.trim() || 'Deleted by Administrator');
+      setActionSuccess(`Report #${deletingReport.report_id} (${deletingReport.title || deletingReport.item_name}) permanently removed from database.`);
+      setDeletingReport(null);
+      setDeleteReason('');
+      loadAdminData();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to remove report from database.');
+    } finally {
+      setSubmittingDelete(false);
+    }
+  };
+
+  const filteredUsers = userList.filter((u) => {
+    const q = userSearch.toLowerCase();
+    return (
+      u.full_name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredReports = reports.filter((r) => {
+    if (reportTypeFilter !== 'all' && r.report_type !== reportTypeFilter) {
+      return false;
+    }
+    if (reportStatusFilter !== 'all') {
+      if (reportStatusFilter === 'returned' && r.lifecycle_status !== 'returned') return false;
+      if (reportStatusFilter === 'archived' && r.lifecycle_status !== 'archived') return false;
+      if (reportStatusFilter === 'disposed' && r.lifecycle_status !== 'disposed') return false;
+      if (reportStatusFilter === 'active' && (r.lifecycle_status === 'returned' || r.lifecycle_status === 'archived' || r.lifecycle_status === 'disposed')) return false;
+      if (reportStatusFilter === 'pending' && r.moderation_status !== 'pending') return false;
+    }
+    if (reportSearch.trim()) {
+      const q = reportSearch.toLowerCase();
+      const matchName = (r.item_name || r.title || '').toLowerCase().includes(q);
+      const matchRef = (r.case_reference || '').toLowerCase().includes(q);
+      const matchLoc = (r.location || r.location_approximate || '').toLowerCase().includes(q);
+      return matchName || matchRef || matchLoc;
+    }
+    return true;
+  });
+
+  const returnedCount = reports.filter((r) => r.lifecycle_status === 'returned').length;
+  const foundCount = reports.filter((r) => r.report_type === 'found').length;
+  const lostCount = reports.filter((r) => r.report_type === 'lost').length;
 
   return (
     <div>
@@ -192,7 +256,7 @@ export const AdminDashboardPage: React.FC = () => {
             Campus Lost &amp; Found Administration
           </h1>
           <p style={{ color: '#e0e7ff', fontSize: '0.95rem' }}>
-            System governance, user role delegation, property taxonomy, custody vaults, and immutable audit compliance.
+            Master oversight: view all system reports, remove items from database, manage users, categories, custody vaults, and audit trails.
           </p>
         </div>
 
@@ -222,8 +286,18 @@ export const AdminDashboardPage: React.FC = () => {
             <Activity size={24} />
           </div>
           <div className="metric-info">
-            <span className="metric-value">{stats?.reports?.total ?? '—'}</span>
-            <span className="metric-label">Total System Reports</span>
+            <span className="metric-value">{reports.length}</span>
+            <span className="metric-label">All System Reports</span>
+          </div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-icon-wrap" style={{ background: '#ecfdf5', color: '#047857' }}>
+            <PackageCheck size={24} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-value">{returnedCount}</span>
+            <span className="metric-label">Items Given to Owner (Returned)</span>
           </div>
         </div>
 
@@ -238,28 +312,25 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon-wrap" style={{ background: '#ecfdf5', color: '#047857' }}>
+          <div className="metric-icon-wrap" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
             <Users size={24} />
           </div>
           <div className="metric-info">
             <span className="metric-value">{userList.length}</span>
-            <span className="metric-label">Registered Users</span>
-          </div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-icon-wrap" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
-            <MapPin size={24} />
-          </div>
-          <div className="metric-info">
-            <span className="metric-value">{custodyLocations.length}</span>
-            <span className="metric-label">Custody Vaults &amp; Desks</span>
+            <span className="metric-label">Registered Accounts</span>
           </div>
         </div>
       </div>
 
       {/* Module Navigation Tabs */}
       <div className="dashboard-tabs">
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`dashboard-tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
+        >
+          <FileText size={16} /> All Reports &amp; Items ({reports.length})
+        </button>
+
         <button
           onClick={() => setActiveTab('users')}
           className={`dashboard-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
@@ -295,13 +366,195 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* TAB 0: ALL REPORTS & ITEM MANAGEMENT */}
+          {activeTab === 'reports' && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    All Campus Reports &amp; Inventory ({filteredReports.length})
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Complete database visibility. Inspect any lost or found record, verify handovers, or remove entries from database.
+                  </p>
+                </div>
+
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Search name, case ref, location..."
+                    value={reportSearch}
+                    onChange={(e) => setReportSearch(e.target.value)}
+                    style={{ paddingLeft: '2.1rem', fontSize: '0.88rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.25rem' }}>
+                  <Filter size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+                  Type:
+                </span>
+                {(['all', 'found', 'lost'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setReportTypeFilter(t)}
+                    className={`btn btn-sm ${reportTypeFilter === t ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ textTransform: 'capitalize', padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
+                  >
+                    {t === 'all' ? `All (${reports.length})` : t === 'found' ? `Found (${foundCount})` : `Lost (${lostCount})`}
+                  </button>
+                ))}
+
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginLeft: '1rem', marginRight: '0.25rem' }}>
+                  Status:
+                </span>
+                {[
+                  { id: 'all', label: 'All Statuses' },
+                  { id: 'active', label: 'Active' },
+                  { id: 'returned', label: `Given to Owner (${returnedCount})` },
+                  { id: 'pending', label: 'Pending Verification' },
+                  { id: 'archived', label: 'Archived' },
+                  { id: 'disposed', label: 'Disposed' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setReportStatusFilter(s.id)}
+                    className={`btn btn-sm ${reportStatusFilter === s.id ? 'btn-secondary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {filteredReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                  No reports match the current filter and search criteria.
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Case Ref</th>
+                        <th>Item Name</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Lifecycle / Custody</th>
+                        <th>Moderation</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReports.map((r) => {
+                        const isReturned = r.lifecycle_status === 'returned';
+                        const isFound = r.report_type === 'found';
+                        return (
+                          <tr key={r.report_id}>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.82rem' }}>
+                              {r.case_reference || `#${r.report_id}`}
+                            </td>
+                            <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {r.item_name || r.title}
+                              {r.category_name && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  {r.category_name}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span
+                                className="badge"
+                                style={{
+                                  background: isFound ? '#f0fdfa' : '#fef3c7',
+                                  color: isFound ? '#0f766e' : '#b45309',
+                                  border: isFound ? '1px solid #99f6e4' : '1px solid #fde68a',
+                                  textTransform: 'capitalize',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {r.report_type}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '0.85rem' }}>
+                              {r.location || r.location_approximate || 'Campus Area'}
+                            </td>
+                            <td>
+                              {isReturned ? (
+                                <span className="badge" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 700 }}>
+                                  ✓ Given to Owner (Returned)
+                                </span>
+                              ) : r.lifecycle_status === 'archived' ? (
+                                <span className="badge" style={{ background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb' }}>
+                                  Archived
+                                </span>
+                              ) : r.lifecycle_status === 'disposed' ? (
+                                <span className="badge" style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+                                  Disposed
+                                </span>
+                              ) : isFound ? (
+                                <span className="badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
+                                  In Custody (Active)
+                                </span>
+                              ) : (
+                                <span className="badge" style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}>
+                                  Active Search
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <span className={`badge-status ${r.moderation_status}`} style={{ textTransform: 'capitalize' }}>
+                                {r.moderation_status}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <Link
+                                to={`/reports/${r.report_id}`}
+                                className="btn btn-outline btn-sm"
+                                style={{ marginRight: '0.5rem', padding: '0.35rem 0.65rem' }}
+                                title="View public detail"
+                              >
+                                <Eye size={14} style={{ marginRight: '3px' }} /> View
+                              </Link>
+                              <button
+                                onClick={() => {
+                                  setDeletingReport(r);
+                                  setDeleteReason('');
+                                }}
+                                className="btn btn-sm"
+                                style={{
+                                  background: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fca5a5',
+                                  padding: '0.35rem 0.65rem',
+                                  fontWeight: 600,
+                                }}
+                                title="Remove report from database"
+                              >
+                                <Trash2 size={14} style={{ marginRight: '3px' }} /> Remove from DB
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 1: USER DIRECTORY & ROLES */}
           {activeTab === 'users' && (
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    Campus User Directory
+                    Campus User Directory ({filteredUsers.length})
                   </h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     Manage access permissions, promote verified personnel to Staff or Admin, and toggle account states.
@@ -584,7 +837,7 @@ export const AdminDashboardPage: React.FC = () => {
                     {auditLogs.map((log: any) => (
                       <tr key={log.audit_id}>
                         <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                          {new Date(log.created_at).toLocaleString()}
+                          {new Date(log.created_at || log.timestamp).toLocaleString()}
                         </td>
                         <td>
                           <span className="badge badge-status" style={{ fontSize: '0.72rem' }}>
@@ -598,7 +851,7 @@ export const AdminDashboardPage: React.FC = () => {
                           {log.actor_user_id ? `User #${log.actor_user_id}` : 'System'}
                         </td>
                         <td style={{ color: 'var(--text-secondary)', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {log.details ? JSON.stringify(log.details) : '—'}
+                          {log.summary || (log.details ? JSON.stringify(log.details) : '—')}
                         </td>
                       </tr>
                     ))}
@@ -608,6 +861,72 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Delete Report Confirmation Modal */}
+      {deletingReport && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', color: '#dc2626' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={22} color="#dc2626" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+                  Permanently Delete Report?
+                </h3>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Case Ref: {deletingReport.case_reference || `#${deletingReport.report_id}`}
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.85rem 1rem',
+              marginBottom: '1.25rem',
+              fontSize: '0.88rem',
+              color: '#991b1b',
+            }}>
+              <strong>Warning:</strong> You are about to remove <strong>"{deletingReport.item_name || deletingReport.title}"</strong> from the database. This will remove its claims, matches, and images permanently. This action is recorded in the immutable audit log.
+            </div>
+
+            <form onSubmit={handleDeleteReport}>
+              <div className="form-group">
+                <label className="form-label">Reason for Removal *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Duplicate submission, spam, test entry, or student requested deletion"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeletingReport(null)}
+                  className="btn btn-outline btn-sm"
+                  disabled={submittingDelete}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingDelete}
+                  className="btn btn-sm"
+                  style={{ background: '#dc2626', color: '#ffffff', fontWeight: 600 }}
+                >
+                  {submittingDelete ? 'Deleting...' : 'Confirm Remove from Database'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Role Management Modal */}

@@ -404,3 +404,52 @@ def test_invalid_status_transition_returned(client: TestClient, test_users):
     )
     assert res_bad.status_code == 400
     assert "without an approved claim" in res_bad.json()["detail"]
+
+
+def test_delete_report(client: TestClient, test_users):
+    """Test deleting a report from database: user is forbidden, staff/admin can delete."""
+    user1_token = get_token(client, "user1@example.com")
+    staff_token = get_token(client, "staff@example.com")
+    admin_token = get_token(client, "admin@example.com")
+
+    cat_id = client.post(
+        "/api/v1/admin/categories",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"category_name": "Temporary Test Items"},
+    ).json()["category_id"]
+
+    report_id = client.post(
+        "/api/v1/reports",
+        headers={"Authorization": f"Bearer {user1_token}"},
+        json={
+            "report_type": "lost",
+            "category_id": cat_id,
+            "item_name": "Temporary Notebook",
+            "description": "Notebook for testing deletion",
+            "date_lost_found": datetime.now(timezone.utc).isoformat(),
+            "location": "Library 2nd Floor",
+        },
+    ).json()["report_id"]
+
+    # Regular user cannot delete
+    res_user_delete = client.delete(
+        f"/api/v1/reports/{report_id}",
+        headers={"Authorization": f"Bearer {user1_token}"},
+    )
+    assert res_user_delete.status_code == 403
+
+    # Staff or Admin can delete
+    res_delete = client.delete(
+        f"/api/v1/reports/{report_id}?reason=Removed+test+data",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert res_delete.status_code == 200
+    assert "permanently removed" in res_delete.json()["message"]
+
+    # Verify report is gone
+    res_get = client.get(
+        f"/api/v1/reports/{report_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert res_get.status_code == 404
+

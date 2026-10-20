@@ -197,3 +197,19 @@ def get_report_history(
             detail="You do not have permission to view this report's history.",
         )
     return report.status_history
+
+
+@router.delete(
+    "/{report_id}",
+    summary="Permanently remove report from database (Staff/Admin only)",
+)
+def delete_report(
+    report_id: int,
+    reason: Optional[str] = Query(None, description="Reason for deletion"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Permanently delete an item report from the database."""
+    ReportService.delete_report(db, report_id, current_user, reason=reason)
+    return {"message": f"Report #{report_id} permanently removed from the database."}
+
