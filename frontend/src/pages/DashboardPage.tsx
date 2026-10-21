@@ -63,16 +63,14 @@ export const DashboardPage: React.FC = () => {
   const loadUserData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [myClaims, reportsRes, notifs] = await Promise.all([
+      const [myClaims, myReportsList, notifs] = await Promise.all([
         claimApi.getMyClaims(),
-        reportApi.searchReports({ page: 1, page_size: 50 }),
+        reportApi.getMyReports(),
         notificationApi.getNotifications(),
       ]);
       setClaims(myClaims);
       setNotifications(notifs);
-      if (user) {
-        setMyReports(reportsRes.items.filter((r) => r.creator_user_id === user.user_id));
-      }
+      setMyReports(myReportsList);
     } catch (err) {
       console.error('Failed to load user data', err);
     } finally {

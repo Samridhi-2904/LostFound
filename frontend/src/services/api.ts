@@ -261,6 +261,67 @@ function normalizeReport(raw: any): ItemReport {
   };
 }
 
+function serializeReportPayload(data: any): any {
+  if (!data) return data;
+  const payload: any = {};
+
+  if (data.report_type) payload.report_type = data.report_type;
+  if (data.category_id !== undefined && data.category_id !== '') {
+    payload.category_id = Number(data.category_id);
+  }
+
+  const title = data.item_name || data.title;
+  if (title) payload.item_name = title;
+
+  if (data.description !== undefined) payload.description = data.description;
+
+  const dateVal = data.date_lost_found || data.date_incident;
+  if (dateVal) {
+    try {
+      payload.date_lost_found = new Date(dateVal).toISOString();
+    } catch {
+      payload.date_lost_found = dateVal;
+    }
+  }
+
+  const loc = data.location || data.location_approximate;
+  if (loc) payload.location = loc;
+
+  const col = data.colour || data.primary_colour;
+  if (col) payload.colour = col;
+
+  if (data.brand) payload.brand = data.brand;
+
+  let marks = data.distinguishing_marks;
+  if (data.model) {
+    marks = marks ? `${marks} [Model: ${data.model}]` : `Model: ${data.model}`;
+  }
+  if (marks) payload.distinguishing_marks = marks;
+
+  if (data.contact_preference) payload.contact_preference = data.contact_preference;
+  if (data.contact_info_restricted) payload.contact_info_restricted = data.contact_info_restricted;
+
+  // Subtypes
+  const lastSeen = data.last_seen_location || data.possible_locations;
+  if (lastSeen) payload.last_seen_location = lastSeen;
+
+  if (data.reward_offered !== undefined && data.reward_offered !== null && data.reward_offered !== '') {
+    payload.reward_offered = String(data.reward_offered).startsWith('$')
+      ? String(data.reward_offered)
+      : `$${data.reward_offered}`;
+  }
+
+  const foundLoc = data.found_location || loc;
+  if (data.report_type === 'found' && foundLoc) {
+    payload.found_location = foundLoc;
+  }
+
+  if (data.custody_location_id) payload.custody_location_id = Number(data.custody_location_id);
+  if (data.storage_reference) payload.storage_reference = data.storage_reference;
+
+  return payload;
+}
+
 export const reportApi = {
   async searchReports(params: SearchReportsParams = {}): Promise<PaginatedResponse<ItemReport>> {
     const search = new URLSearchParams();
@@ -288,18 +349,25 @@ export const reportApi = {
     return normalizeReport(raw);
   },
 
+  async getMyReports(): Promise<ItemReport[]> {
+    const list = await request<any[]>('/reports/me');
+    return (list || []).map(normalizeReport);
+  },
+
   async createReport(data: any): Promise<ItemReport> {
+    const serialized = serializeReportPayload(data);
     const raw = await request<any>('/reports', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(serialized),
     });
     return normalizeReport(raw);
   },
 
   async updateReport(id: number, data: any): Promise<ItemReport> {
+    const serialized = serializeReportPayload(data);
     const raw = await request<any>(`/reports/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(serialized),
     });
     return normalizeReport(raw);
   },

@@ -50,13 +50,18 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
           </div>
         )}
 
-        <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '0.5rem' }}>
+        <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <span className={`badge ${isFound ? 'badge-found' : 'badge-lost'}`}>
             {report.report_type}
           </span>
           <span className={`badge badge-status ${report.lifecycle_status}`}>
             {report.lifecycle_status}
           </span>
+          {report.moderation_status && String(report.moderation_status).toLowerCase().includes('pending') && (
+            <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+              Under Review
+            </span>
+          )}
         </div>
 
         {report.is_high_value && (

@@ -107,25 +107,40 @@ export const ReportFormPage: React.FC<ReportFormPageProps> = ({ initialType }) =
 
     try {
       const payload: any = {
+        item_name: title,
         title,
         description,
         report_type: reportType,
         category_id: Number(categoryId),
+        date_lost_found: new Date(dateIncident).toISOString(),
         date_incident: new Date(dateIncident).toISOString(),
+        location: locationApproximate,
         location_approximate: locationApproximate,
+        colour: primaryColour || undefined,
         primary_colour: primaryColour || undefined,
         brand: brand || undefined,
         model: model || undefined,
+        distinguishing_marks: model ? `Model: ${model}` : undefined,
+        contact_preference: 'in_app',
         contact_info_restricted: contactInfoRestricted || undefined,
-        is_high_value: isHighValue,
       };
 
       if (isFound) {
-        payload.custody_location_id = Number(custodyLocationId);
-        payload.storage_reference = storageReference || undefined;
+        payload.found_location = locationApproximate;
+        if (custodyLocationId) {
+          payload.custody_location_id = Number(custodyLocationId);
+        }
+        if (storageReference) {
+          payload.storage_reference = storageReference;
+        }
       } else {
-        payload.possible_locations = possibleLocations || undefined;
-        payload.reward_offered = rewardOffered !== '' ? Number(rewardOffered) : undefined;
+        if (possibleLocations) {
+          payload.last_seen_location = possibleLocations;
+          payload.possible_locations = possibleLocations;
+        }
+        if (rewardOffered !== '' && rewardOffered !== undefined && rewardOffered !== null) {
+          payload.reward_offered = `$${rewardOffered}`;
+        }
       }
 
       const createdReport = await reportApi.createReport(payload);

@@ -50,14 +50,12 @@ export const ProfilePage: React.FC = () => {
   const loadUserData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [myClaims, reportsRes] = await Promise.all([
+      const [myClaims, myReportsList] = await Promise.all([
         claimApi.getMyClaims(),
-        reportApi.searchReports({ page: 1, page_size: 50 }),
+        reportApi.getMyReports(),
       ]);
       setClaims(myClaims);
-      if (user) {
-        setMyReports(reportsRes.items.filter((r) => r.creator_user_id === user.user_id));
-      }
+      setMyReports(myReportsList);
     } catch (err) {
       console.error('Failed to load user claims or reports', err);
     } finally {

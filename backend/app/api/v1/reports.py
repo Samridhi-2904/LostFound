@@ -44,12 +44,22 @@ def list_reports(
 
     base_query = select(ItemReport)
 
-    # Privacy filter: unauthenticated visitors only see verified reports
+    # Privacy filter: unauthenticated visitors only see verified reports.
+    # Authenticated users can always see verified reports plus any reports they created themselves.
     if not is_staff_or_admin:
-        base_query = base_query.where(
-            ItemReport.moderation_status == ModerationStatus.VERIFIED,
-            ItemReport.lifecycle_status.notin_([LifecycleStatus.ARCHIVED, LifecycleStatus.DISPOSED]),
-        )
+        if current_user:
+            base_query = base_query.where(
+                or_(
+                    ItemReport.moderation_status == ModerationStatus.VERIFIED,
+                    ItemReport.created_by == current_user.user_id,
+                ),
+                ItemReport.lifecycle_status.notin_([LifecycleStatus.ARCHIVED, LifecycleStatus.DISPOSED]),
+            )
+        else:
+            base_query = base_query.where(
+                ItemReport.moderation_status == ModerationStatus.VERIFIED,
+                ItemReport.lifecycle_status.notin_([LifecycleStatus.ARCHIVED, LifecycleStatus.DISPOSED]),
+            )
 
     # Apply filters
     if report_type:
@@ -129,6 +139,29 @@ def create_report(
     """Create a new report under the authenticated user's account."""
     report = ReportService.create_report(db, report_in, current_user)
     return ReportService.format_report_dict(report, current_user)
+
+
+@router.get(
+    "/me",
+    summary="Get current user's submitted reports",
+)
+def get_my_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Retrieve all reports submitted by the authenticated user regardless of moderation status."""
+    data_query = (
+        select(ItemReport)
+        .where(ItemReport.created_by == current_user.user_id)
+        .options(
+            joinedload(ItemReport.category),
+            joinedload(ItemReport.lost_item),
+            joinedload(ItemReport.found_item).joinedload(FoundItem.custody_location),
+        )
+        .order_by(ItemReport.date_reported.desc())
+    )
+    reports = db.scalars(data_query).unique().all()
+    return [ReportService.format_report_dict(r, current_user) for r in reports]
 
 
 @router.get(
